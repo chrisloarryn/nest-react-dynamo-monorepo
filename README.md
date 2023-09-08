@@ -61,3 +61,26 @@ Nx comes with local caching already built-in (check your `nx.json`). On CI you m
 - [Join the community](https://nx.dev/community)
 - [Subscribe to the Nx Youtube Channel](https://www.youtube.com/@nxdevtools)
 - [Follow us on Twitter](https://twitter.com/nxdevtools)
+
+
+## Local DynamoDB
+
+amazon docs: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.DownloadingAndRunning.html
+
+To run DynamoDB locally, you can use the following command:
+
+```bash
+docker-compose up -d dynamodb-local
+```
+
+## For creating more resources in the backend
+
+```bash
+nx g resource --project=todos-backend --directory=app --name=list --type=rest         
+````
+
+## For executing backend in dev mode
+
+```bash
+nx run todos-backend:serve:development
+```
