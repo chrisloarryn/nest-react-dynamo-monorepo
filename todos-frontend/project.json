@@ -1,17 +1,15 @@
 {
-  "name": "todo-react",
-  "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "todo-react/src",
+  "name": "todos-frontend",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "todos-frontend/src",
   "projectType": "application",
   "targets": {
     "build": {
       "executor": "@nx/vite:build",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/todo-react"
+        "outputPath": "dist/todos-frontend"
       },
       "configurations": {
         "development": {
@@ -26,15 +24,15 @@
       "executor": "@nx/vite:dev-server",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "todo-react:build"
+        "buildTarget": "todos-frontend:build"
       },
       "configurations": {
         "development": {
-          "buildTarget": "todo-react:build:development",
+          "buildTarget": "todos-frontend:build:development",
           "hmr": true
         },
         "production": {
-          "buildTarget": "todo-react:build:production",
+          "buildTarget": "todos-frontend:build:production",
           "hmr": false
         }
       }
@@ -43,36 +41,30 @@
       "executor": "@nx/vite:preview-server",
       "defaultConfiguration": "development",
       "options": {
-        "buildTarget": "todo-react:build"
+        "buildTarget": "todos-frontend:build"
       },
       "configurations": {
         "development": {
-          "buildTarget": "todo-react:build:development"
+          "buildTarget": "todos-frontend:build:development"
         },
         "production": {
-          "buildTarget": "todo-react:build:production"
+          "buildTarget": "todos-frontend:build:production"
         }
       }
     },
     "test": {
       "executor": "@nx/vite:test",
-      "outputs": [
-        "{options.reportsDirectory}"
-      ],
+      "outputs": ["{options.reportsDirectory}"],
       "options": {
         "passWithNoTests": true,
-        "reportsDirectory": "../coverage/todo-react"
+        "reportsDirectory": "../coverage/todos-frontend"
       }
     },
     "lint": {
       "executor": "@nx/linter:eslint",
-      "outputs": [
-        "{options.outputFile}"
-      ],
+      "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": [
-          "todo-react/**/*.{ts,tsx,js,jsx}"
-        ]
+        "lintFilePatterns": ["todos-frontend/**/*.{ts,tsx,js,jsx}"]
       }
     }
   },

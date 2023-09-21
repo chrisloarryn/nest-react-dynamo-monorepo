@@ -1,9 +1,8 @@
 import { v4 } from 'uuid';
 import { Schema } from 'dynamoose';
-import { TaskStatus } from '../interfaces/task.interface';
 
-// dynamoose schema with name "task"and properties: id, text, order, archived.
-export const TaskSchema = new Schema(
+// dynamoose schema with name "list"and properties: id, name, order, boardId, archived, tasks.
+export const ListSchema = new Schema(
   {
     id: {
       type: String,
@@ -11,26 +10,9 @@ export const TaskSchema = new Schema(
       required: false,
       default: v4(),
     },
-    title: {
+    name: {
       type: String,
-      required: false,
-      default: '',
-    },
-    text: {
-      type: String,
-      required: false,
-      default: '',
-    },
-    status: {
-      type: String,
-      required: false,
-      enum: Object.values(TaskStatus),
-      default: TaskStatus.TODO,
-    },
-    type: {
-      type: String,
-      required: false,
-      default: 'task',
+      required: true,
     },
     order: {
       type: Number,
@@ -44,13 +26,7 @@ export const TaskSchema = new Schema(
         return value;
       },
     },
-    // board id
     boardId: {
-      type: String,
-      required: true,
-    },
-    // column id
-    columnId: {
       type: String,
       required: true,
     },
@@ -58,6 +34,11 @@ export const TaskSchema = new Schema(
       type: Boolean,
       required: false,
       default: false,
+    },
+    tasks: {
+      type: Array,
+      required: false,
+      default: [],
     },
   },
   {

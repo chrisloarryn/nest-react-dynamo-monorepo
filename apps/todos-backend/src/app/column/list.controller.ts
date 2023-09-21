@@ -12,7 +12,7 @@ import { CreateListDto } from './dto/create-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
 import { List, ListKey } from './interfaces/list.interface';
 
-@Controller('lists')
+@Controller('columns')
 export class ListController {
   constructor(private readonly listService: ListService) {}
 
