@@ -11,6 +11,8 @@ import { ListSchema } from './entities/list.entity';
       schema: ListSchema,
       options: {
         tableName: 'lists',
+        create: false,
+        waitForActive: false,
       }
   }]),
   ],

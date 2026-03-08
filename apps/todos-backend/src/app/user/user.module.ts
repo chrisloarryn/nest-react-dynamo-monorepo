@@ -10,14 +10,9 @@ import { UserSchema } from './entities/user.entity';
       name: 'User',
       schema: UserSchema,
       options: {
-        tableName: 'tasks',
-        update: true,
-        tags: {
-          displayName: 'string',
-          email: 'string',
-          avatarUrl: 'string',
-        },
-        
+        tableName: 'users',
+        create: false,
+        waitForActive: false,
       }
   }]),
   ],

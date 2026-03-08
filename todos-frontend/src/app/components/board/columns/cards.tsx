@@ -1,25 +1,19 @@
-import React, { FC } from 'react';
-import PropTypes from 'prop-types';
-import { CardDetail } from '@/src/types/cards';
-import Card from '../../../components/board/columns/card';
+import type { CardDetail } from '../../../types/cards';
+import Card from './card';
 
 type Props = {
   cards: CardDetail[];
   showCardDetail: (cardId: string) => void;
 };
 
-const Cards: FC<Props> = ({ cards, showCardDetail }) => {
+const Cards = ({ cards, showCardDetail }: Props) => {
   return (
     <>
-      {cards?.map((card, index) => (
-        <Card key={index} card={card} cardIndex={index} showCardDetail={showCardDetail} />
+      {cards.map((card) => (
+        <Card key={card.id} card={card} showCardDetail={showCardDetail} />
       ))}
     </>
   );
-};
-
-Cards.propTypes = {
-  showCardDetail: PropTypes.func
 };
 
 export default Cards;

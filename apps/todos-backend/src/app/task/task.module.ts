@@ -11,6 +11,8 @@ import { DynamooseModule } from 'nestjs-dynamoose';
       schema: TaskSchema,
       options: {
         tableName: 'tasks',
+        create: false,
+        waitForActive: false,
       }
   }]),
   ],

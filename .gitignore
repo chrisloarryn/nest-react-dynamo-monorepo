@@ -40,3 +40,7 @@ Thumbs.db
 
 # custom
 apps/todo-react/*
+
+.nx/cache
+.nx/workspace-data
+.nx/polygraph

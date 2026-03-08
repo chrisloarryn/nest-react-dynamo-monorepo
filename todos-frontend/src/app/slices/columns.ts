@@ -1,223 +1,191 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import checkEnvironment from '../util/check-environment';
-import { SingleUser } from '../types/user';
-import { ColumnsSlice } from '../types/columns';
-import findIndex from 'lodash.findindex';
+import type { RootState } from '../store';
+import type { Column } from '../types/columns';
 
-import { BoardSlice } from '../types/boards';
+type ColumnPatch = Pick<Column, 'id'> & Partial<Omit<Column, 'id'>>;
 
-const initialState = {
+type ColumnsState = {
+  columns: Column[];
+  status: 'idle' | 'pending' | 'success' | 'failed';
+  isRequesting: boolean;
+  doneFetching: boolean;
+  error: string | null;
+};
+
+const initialState: ColumnsState = {
   columns: [],
   status: 'idle',
   isRequesting: false,
   doneFetching: true,
-  error: {},
+  error: null,
 };
 
 const host = checkEnvironment();
 
-export const fetchColumns = createAsyncThunk(
+const sortColumns = (columns: Column[]) =>
+  [...columns].sort((left, right) => left.order - right.order);
+
+export const fetchColumns = createAsyncThunk<Column[], void, { state: RootState }>(
   'columns/fetchColumns',
-  async (_obj, { getState }) => {
-    const { board } = getState() as { board: BoardSlice };
+  async (_, { getState }) => {
+    const boardId = getState().board.board.id;
+    const response = await fetch(`${host}/api/boards/${boardId}/columns`);
 
-    const response = await fetch(
-      `${host}/api/boards/${board.board._id}/columns`
-    ).then((response) => response.json());
-
-    return response;
+    return response.json();
   }
 );
 
-export const deleteColumn = createAsyncThunk(
-  'column/deleteColumn',
-  async (columnId: string, { getState }) => {
-    const { board } = getState() as { board: BoardSlice };
-
-    const url = `${host}/api/boards/${board.board._id}/columns/${columnId}`;
-
-    const response = await fetch(url, {
+export const deleteColumn = createAsyncThunk<{ deleted: boolean; id: string }, string, { state: RootState }>(
+  'columns/deleteColumn',
+  async (columnId) => {
+    const response = await fetch(`${host}/api/columns/${columnId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
     });
 
-    const inJSON = await response.json();
-
-    return inJSON;
+    return response.json();
   }
 );
 
-export const addColumnToBoard = createAsyncThunk(
-  'column/add',
-  async (columnId: string, { getState }) => {
-    const { board } = getState() as { board: BoardSlice };
-    const { user } = getState() as { user: SingleUser };
-    const { columns } = getState() as { columns: ColumnsSlice };
+export const addColumnToBoard = createAsyncThunk<Column, void, { state: RootState }>(
+  'columns/addColumnToBoard',
+  async (_, { getState }) => {
+    const state = getState();
+    const boardId = state.board.board.id;
+    const userId = state.user.id;
+    const order = state.columns.columns.reduce((max, column) => Math.max(max, column.order), 0) + 1;
 
-    const columsArray = columns.columns;
-    let sequence = 1;
-
-    if (columns.columns.length > 0) {
-      sequence = columsArray[columsArray.length - 1].sequence + 1;
-    }
-
-    const data = {
-      // id: columnId,
-      boardId: board.board._id,
-      name: 'Add title',
-      // dateCreated: new Date().toLocaleString(),
-      userId: user.id,
-      order: sequence,
-    };
-
-    const url = `${host}/api/columns`;
-
-    const response = await fetch(url, {
+    const response = await fetch(`${host}/api/columns`, {
       method: 'POST',
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
       },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        boardId,
+        name: 'Add title',
+        userId,
+        order,
+        archived: false,
+        tasks: [],
+      }),
     });
 
-    const inJSON = await response.json();
-
-    return inJSON;
+    return response.json();
   }
 );
 
-export const updateColumn = createAsyncThunk(
-  'column/updateColumn',
-  async (obj: { name: string; id: string }, { getState }) => {
-    const { board } = getState() as { board: BoardSlice };
-
-    const data = {
-      // id: obj.id,
-      name: obj.name,
-      boardId: board.board._id,
-    };
-
-    const url = `${host}/api/columns/${obj.id}`;
-
-    const response = await fetch(url, {
+export const updateColumn = createAsyncThunk<Column, ColumnPatch>(
+  'columns/updateColumn',
+  async (column) => {
+    const { id, ...payload } = column;
+    const response = await fetch(`${host}/api/columns/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
-    const inJSON = await response.json();
-
-    return inJSON;
+    return response.json();
   }
 );
 
-export const updateColumnSequence = createAsyncThunk(
-  'card/updateCardSequence',
-  async (obj: { _id: string; sequence: number }, { getState }) => {
-    const { board } = getState() as { board: BoardSlice };
-    const { _id, sequence } = obj;
+export const persistColumnOrders = createAsyncThunk<ColumnPatch[], ColumnPatch[]>(
+  'columns/persistColumnOrders',
+  async (patches, { dispatch }) => {
+    await Promise.all(
+      patches.map((patch) => dispatch(updateColumn(patch)).unwrap())
+    );
 
-    const data = {
-      _id,
-      sequence,
-    };
-
-    const url = `${host}/api/columns/${board.board._id}/columns/${_id}`;
-
-    const response = await fetch(url, {
-      method: 'PATCH',
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-      body: JSON.stringify(data),
-    });
-
-    const inJSON = await response.json();
-
-    return inJSON;
+    return patches;
   }
 );
 
-export const columnsSlice = createSlice({
+const columnsSlice = createSlice({
   name: 'columns',
-  initialState: initialState,
+  initialState,
   reducers: {
     resetColumns: () => initialState,
-    updateColumnSequenceToLocalState: (state, { payload }) => {
-      const columnIndex = findIndex(state.columns, { _id: payload._id });
-      state.columns[columnIndex].order = payload.order;
+    setColumns: (state, action: PayloadAction<Column[]>) => {
+      state.columns = sortColumns(action.payload);
     },
   },
-  extraReducers: {
-    [addColumnToBoard.pending.toString()]: (state) => {
-      state.status = 'pending';
-      state.isRequesting = true;
-    },
-    [addColumnToBoard.fulfilled.toString()]: (state) => {
-      state.status = 'success';
-      state.isRequesting = false;
-    },
-    [addColumnToBoard.rejected.toString()]: (state) => {
-      state.status = 'failed';
-      state.isRequesting = false;
-    },
-    [fetchColumns.pending.toString()]: (state) => {
-      state.status = 'pending';
-      state.isRequesting = true;
-    },
-    [fetchColumns.fulfilled.toString()]: (state, { payload }) => {
-      const sortedColumns = payload.sort((a, b) => a.order - b.order);
-
-      state.columns = sortedColumns;
-      state.status = 'success';
-      state.isRequesting = false;
-    },
-    [fetchColumns.rejected.toString()]: (state) => {
-      state.status = 'failed';
-      state.isRequesting = false;
-    },
-    [deleteColumn.pending.toString()]: (state) => {
-      state.status = 'pending';
-      state.isRequesting = true;
-    },
-    [deleteColumn.fulfilled.toString()]: (state) => {
-      state.status = 'success';
-      state.isRequesting = false;
-    },
-    [deleteColumn.rejected.toString()]: (state) => {
-      state.status = 'failed';
-      state.isRequesting = false;
-    },
-    [updateColumn.pending.toString()]: (state) => {
-      state.status = 'pending';
-      state.isRequesting = true;
-    },
-    [updateColumn.fulfilled.toString()]: (state) => {
-      state.status = 'success';
-      state.isRequesting = false;
-    },
-    [updateColumn.rejected.toString()]: (state) => {
-      state.status = 'failed';
-      state.isRequesting = false;
-    },
+  extraReducers: (builder) => {
+    builder
+      .addCase(addColumnToBoard.pending, (state) => {
+        state.status = 'pending';
+        state.isRequesting = true;
+      })
+      .addCase(addColumnToBoard.fulfilled, (state, action) => {
+        state.columns = sortColumns([...state.columns, action.payload]);
+        state.status = 'success';
+        state.isRequesting = false;
+      })
+      .addCase(addColumnToBoard.rejected, (state, action) => {
+        state.status = 'failed';
+        state.isRequesting = false;
+        state.error = action.error.message ?? 'Unable to add column';
+      })
+      .addCase(fetchColumns.pending, (state) => {
+        state.status = 'pending';
+        state.isRequesting = true;
+      })
+      .addCase(fetchColumns.fulfilled, (state, action) => {
+        state.columns = sortColumns(action.payload);
+        state.status = 'success';
+        state.isRequesting = false;
+      })
+      .addCase(fetchColumns.rejected, (state, action) => {
+        state.status = 'failed';
+        state.isRequesting = false;
+        state.error = action.error.message ?? 'Unable to fetch columns';
+      })
+      .addCase(deleteColumn.pending, (state) => {
+        state.status = 'pending';
+        state.isRequesting = true;
+      })
+      .addCase(deleteColumn.fulfilled, (state, action) => {
+        state.columns = state.columns.filter((column) => column.id !== action.payload.id);
+        state.status = 'success';
+        state.isRequesting = false;
+      })
+      .addCase(deleteColumn.rejected, (state, action) => {
+        state.status = 'failed';
+        state.isRequesting = false;
+        state.error = action.error.message ?? 'Unable to delete column';
+      })
+      .addCase(updateColumn.pending, (state) => {
+        state.status = 'pending';
+        state.isRequesting = true;
+      })
+      .addCase(updateColumn.fulfilled, (state, action) => {
+        state.columns = sortColumns(
+          state.columns.map((column) => (column.id === action.payload.id ? action.payload : column))
+        );
+        state.status = 'success';
+        state.isRequesting = false;
+      })
+      .addCase(updateColumn.rejected, (state, action) => {
+        state.status = 'failed';
+        state.isRequesting = false;
+        state.error = action.error.message ?? 'Unable to update column';
+      })
+      .addCase(persistColumnOrders.pending, (state) => {
+        state.status = 'pending';
+      })
+      .addCase(persistColumnOrders.fulfilled, (state) => {
+        state.status = 'success';
+      })
+      .addCase(persistColumnOrders.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message ?? 'Unable to persist column order';
+      });
   },
 });
 
-export const { resetColumns, updateColumnSequenceToLocalState } =
-  columnsSlice.actions;
+export const { resetColumns, setColumns } = columnsSlice.actions;
 
 export default columnsSlice.reducer;

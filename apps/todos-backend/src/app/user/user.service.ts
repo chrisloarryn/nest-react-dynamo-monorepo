@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel, Model } from 'nestjs-dynamoose';
 import { User, UserKey } from './interfaces/user.interface';
 
@@ -11,23 +9,25 @@ export class UserService {
     private readonly userModel: Model<User, UserKey>
   ) { }
   
-  create(createUserDto: User) {
-    return this.userModel.create(createUserDto);
+  create(user: User) {
+    return this.userModel.create(user);
   }
 
   findAll() {
     return this.userModel.scan().exec();
   }
 
-  findOne(id: UserKey) {
-    return this.userModel.get(id);
+  findOne(id: string) {
+    return this.userModel.get({ id });
   }
 
-  update(id: UserKey, updateUserDto: User) {
-    return this.userModel.update(id, updateUserDto);
+  update(id: string, user: User) {
+    return this.userModel.update({ id }, { ...user, id });
   }
 
-  remove(id: UserKey) {
-    return this.userModel.delete(id);
+  async remove(id: string) {
+    await this.userModel.delete({ id });
+
+    return { deleted: true, id };
   }
 }

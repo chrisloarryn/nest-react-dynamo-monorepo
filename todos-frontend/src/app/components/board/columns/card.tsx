@@ -1,65 +1,97 @@
-import React, { FC, useEffect } from 'react';
-import { Box, Badge, Avatar } from '@chakra-ui/react';
-import { Draggable } from 'react-beautiful-dnd';
-import { CardDetail } from '../../../types/cards';
+import { useEffect, useRef, useState } from 'react';
+import { Avatar, Badge, Box } from '@chakra-ui/react';
+import { attachClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
+import {
+  draggable,
+  dropTargetForElements,
+} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
+import type { CardDetail } from '../../../types/cards';
 import { useAppSelector } from '../../../hooks';
+import { isCardDragData } from './dnd-data';
 
 type Props = {
-  showCardDetail: (cardId: string) => void;
-  cardIndex: number;
   card: CardDetail;
+  showCardDetail: (cardId: string) => void;
 };
 
-const Card: FC<Props> = ({ cardIndex, showCardDetail, card }) => {
+const Card = ({ showCardDetail, card }: Props) => {
+  const elementRef = useRef<HTMLDivElement | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const users = useAppSelector((state) => state.users.users);
 
-  const loadAssignedToUser = () => {
-    if (!card.assignedTo) return;
-
-    const user = users.filter((user) => user.id === card.assignedTo);
-
-    return (
-      <Box display="flex" justifyContent="flex-end">
-        <Avatar size="xs" name={user[0]?.fullName} />
-      </Box>
-    );
-  };
-
   useEffect(() => {
-    console.log('card', JSON.stringify(card, null, 2));
-  }, [card]);
+    const element = elementRef.current;
+    if (!element) {
+      return;
+    }
+
+    return combine(
+      draggable({
+        element,
+        getInitialData: () => ({
+          type: 'card',
+          cardId: card.id,
+          columnId: card.columnId,
+        }),
+        onDragStart: () => setIsDragging(true),
+        onDrop: () => setIsDragging(false),
+      }),
+      dropTargetForElements({
+        element,
+        canDrop: ({ source }) =>
+          isCardDragData(source.data) &&
+          source.data.cardId !== card.id,
+        getData: ({ input, element: currentElement }) =>
+          attachClosestEdge(
+            {
+              type: 'card',
+              cardId: card.id,
+              columnId: card.columnId,
+            },
+            {
+              input,
+              element: currentElement,
+              allowedEdges: ['top', 'bottom'],
+            }
+          ),
+      })
+    );
+  }, [card.columnId, card.id]);
+
+  const assignedUser = users.find((user) => user.id === card.assignedTo);
 
   return (
-    // https://github.com/atlassian/react-beautiful-dnd/issues/1767
-    <Draggable draggableId={card.id} index={cardIndex} key={card.id}>
-      {(provided) => (
-        <Box
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
-          ref={provided.innerRef}
-          m="5px"
-          p="10px"
-          id={card.id}
-          minHeight="80px"
-          borderWidth="1px"
-          bg="white"
-          cursor="pointer"
-          borderRadius="md"
-          overflow="auto"
-          _hover={{
-            backgroundColor: 'lightblue'
-          }}
-          onClick={() => showCardDetail(card.id)}>
-          {card.label && (
-            <Badge bg={card.label.type} color="white">
-              {card.label.type}
-            </Badge>
-          )}
-          <p>{card.title}</p>
-          {loadAssignedToUser()}
+    <Box
+      ref={elementRef}
+      m="5px"
+      p="10px"
+      minHeight="80px"
+      borderWidth="1px"
+      bg={isDragging ? 'gray.100' : 'white'}
+      cursor="grab"
+      borderRadius="md"
+      overflow="auto"
+      boxShadow={isDragging ? 'md' : 'sm'}
+      _hover={{
+        backgroundColor: 'gray.50',
+      }}
+      onClick={() => showCardDetail(card.id)}
+    >
+      {card.label ? (
+        <Badge bg={card.label.bg} color="white">
+          {card.label.type}
+        </Badge>
+      ) : null}
+      <Box mt="2" fontWeight="semibold">
+        {card.title}
+      </Box>
+      {assignedUser ? (
+        <Box display="flex" justifyContent="flex-end" mt="3">
+          <Avatar size="xs" name={assignedUser.fullName} />
         </Box>
-      )}
-    </Draggable>
+      ) : null}
+    </Box>
   );
 };
 

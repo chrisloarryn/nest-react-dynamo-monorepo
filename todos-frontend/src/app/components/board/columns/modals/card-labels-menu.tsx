@@ -1,80 +1,78 @@
-import React, { FC } from 'react';
 import {
-  Button,
-  Text,
   Box,
+  Button,
   List,
   ListItem,
   Menu,
   MenuButton,
+  MenuItem,
   MenuList,
-  MenuItem
+  Text,
 } from '@chakra-ui/react';
 import { MdLabelOutline } from 'react-icons/md';
+import { useAppDispatch } from '../../../../hooks';
 import { updateCard } from '../../../../slices/cards';
-import { useDispatch } from 'react-redux';
-import { Label } from '../../../../types/cards';
+import type { Label } from '../../../../types/cards';
 
-type IProps = {
+type Props = {
   id: string;
-  boardId: string;
 };
 
-const cardLabels = [
+const cardLabels: Label[] = [
   {
     type: 'performance',
-    bg: '#0079bf'
+    bg: '#0079bf',
   },
   {
     type: 'bug',
-    bg: '#eb5a46'
+    bg: '#eb5a46',
   },
   {
     type: 'feature',
-    bg: '#61bd4f'
+    bg: '#61bd4f',
   },
   {
     type: 'information',
-    bg: '#ff9f1a'
+    bg: '#ff9f1a',
   },
   {
     type: 'warning',
-    bg: '#f2d600'
-  }
+    bg: '#f2d600',
+  },
 ];
 
-const CardLabel: FC<IProps> = ({ id, boardId }) => {
-  const dispatch = useDispatch();
+const CardLabel = ({ id }: Props) => {
+  const dispatch = useAppDispatch();
 
   const handleClick = async (label: Label) => {
-    const data = {
-      id: id,
-      boardId,
-      label
-    };
-
-    await dispatch(updateCard(data));
+    await dispatch(
+      updateCard({
+        id,
+        label,
+      })
+    );
   };
 
   return (
-    <Box marginTop="2rem" flexDirection="column" width="20%">
+    <Box marginTop="2rem" flexDirection="column" width="full">
       <Text as="samp" whiteSpace="nowrap">
         ADD TO CARD
       </Text>
       <List spacing={3} p="5px">
         <ListItem>
-          <Menu size="xs">
+          <Menu>
             <MenuButton leftIcon={<MdLabelOutline />} size="xs" whiteSpace="nowrap" as={Button}>
               Labels
             </MenuButton>
             <MenuList padding="5px">
-              {cardLabels.map((item, index) => (
+              {cardLabels.map((label) => (
                 <MenuItem
-                  bg={item.bg}
+                  bg={label.bg}
                   marginBottom="5px"
-                  key={index}
-                  onClick={() => handleClick(item)}>
-                  <Box minH="20px"></Box>
+                  key={label.type}
+                  onClick={() => handleClick(label)}
+                >
+                  <Box minH="20px" />
                 </MenuItem>
               ))}
             </MenuList>

@@ -1,14 +1,5 @@
-import React from 'react'
-import TrelloBoard from '../board'
+import Board from '../board';
 
-interface TodoListProps<T = any> {
-	items?: T[]
-}
-
-export const TodoList: React.FC<TodoListProps<unknown>> = ({ items = [] }) => {
-	return (
-		<>
-			<TrelloBoard />
-		</>
-	)
-}
+export const TodoList = () => {
+  return <Board />;
+};

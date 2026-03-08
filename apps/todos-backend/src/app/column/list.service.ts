@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel, Model } from 'nestjs-dynamoose';
-import { ListSchema } from './entities/list.entity';
 import { List, ListKey } from './interfaces/list.interface';
 
 @Injectable()
@@ -18,15 +17,17 @@ export class ListService {
     return this.listModel.create(list);
   }
 
-  async findOne(id: ListKey): Promise<List> {
-    return this.listModel.get(id);
+  async findOne(id: string): Promise<List> {
+    return this.listModel.get({ id });
   }
 
-  async update(id: ListKey, list: List): Promise<List> {
-    return this.listModel.update(id, list);
+  async update(id: string, list: List): Promise<List> {
+    return this.listModel.update({ id }, { ...list, id });
   }
 
-  async remove(id: ListKey): Promise<any> {
-    return this.listModel.delete(id);
+  async remove(id: string): Promise<{ deleted: true; id: string }> {
+    await this.listModel.delete({ id });
+
+    return { deleted: true, id };
   }
 }

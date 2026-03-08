@@ -1,14 +1,5 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "tasksRunnerOptions": {
-    "default": {
-      "runner": "nx-cloud",
-      "options": {
-        "cacheableOperations": ["build", "lint", "test", "e2e"],
-        "accessToken": "OGRiMzk4ODUtNTM3Ni00YjU5LWI5ZmItNDAxMDdkZWU0OGEzfHJlYWQtd3JpdGU="
-      }
-    }
-  },
   "workspaceLayout": {
     "projectNameAndRootFormat": "as-provided"
   },
@@ -46,16 +37,16 @@
   "generators": {
     "@nx/react": {
       "application": {
-        "style": "styled-components",
+        "style": "css",
         "linter": "eslint",
         "bundler": "vite",
         "babel": true
       },
       "component": {
-        "style": "styled-components"
+        "style": "css"
       },
       "library": {
-        "style": "styled-components",
+        "style": "css",
         "linter": "eslint"
       }
     }

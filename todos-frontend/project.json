@@ -3,13 +3,15 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "todos-frontend/src",
   "projectType": "application",
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/vite:build",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
-        "outputPath": "dist/todos-frontend"
+        "outputPath": "dist/todos-frontend",
+        "configFile": "todos-frontend/vite.config.ts"
       },
       "configurations": {
         "development": {
@@ -53,20 +55,20 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
+      "executor": "@nx/vitest:test",
       "outputs": ["{options.reportsDirectory}"],
       "options": {
+        "configFile": "todos-frontend/vite.config.ts",
         "passWithNoTests": true,
         "reportsDirectory": "../coverage/todos-frontend"
       }
     },
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": ["todos-frontend/**/*.{ts,tsx,js,jsx}"]
       }
     }
-  },
-  "tags": []
+  }
 }

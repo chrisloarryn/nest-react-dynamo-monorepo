@@ -1,92 +1,93 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import checkEnvironment from '../util/check-environment';
-import { SingleUser } from '../types/user';
-import { BoardSlice } from '../types/boards';
+import type { RootState } from '../store';
+import type { Board } from '../types/boards';
 
-const initialState = {
+type BoardsState = {
+  boards: Board[];
+  status: 'idle' | 'pending' | 'success' | 'failed';
+  doneFetching: boolean;
+  isRequesting: boolean;
+  error: string | null;
+};
+
+const initialState: BoardsState = {
   boards: [],
   status: 'idle',
   doneFetching: true,
   isRequesting: false,
-  error: {}
+  error: null,
 };
 
 const host = checkEnvironment();
 
-export const fetchBoards = createAsyncThunk('boards/fetchBoards', async (_obj, { getState }) => {
-  const { user } = getState() as { user: SingleUser };
-  const id = user.id;
+export const fetchBoards = createAsyncThunk<Board[], void, { state: RootState }>(
+  'boards/fetchBoards',
+  async (_, { getState }) => {
+    const userId = getState().user.id;
+    const response = await fetch(`${host}/api/boards?userid=${userId}`);
 
-  const response = await fetch(`${host}/api/boards?userid=${id}`).then((response) =>
-    response.json()
-  );
-
-  return response;
-});
-
-export const createBoard = createAsyncThunk('board/create', async (_obj, { getState }) => {
-  const { board } = getState() as { board: BoardSlice };
-  const { user } = getState() as { user: SingleUser };
-
-  const data = {
-    _id: board.board._id,
-    name: board.board.name,
-    dateCreated: board.board.dateCreated,
-    createdBy: user.id,
-    backgroundImage: '/boards/board-background.jpg'
-  };
-
-  const url = `${host}/api/boards`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    mode: 'cors',
-    cache: 'no-cache',
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    redirect: 'follow',
-    referrerPolicy: 'no-referrer',
-    body: JSON.stringify(data)
-  });
-
-  const inJSON = await response.json();
-  return inJSON;
-});
-
-export const boardSlice = createSlice({
-  name: 'boards',
-  initialState: initialState,
-  reducers: {
-    resetBoards: () => initialState
-  },
-  extraReducers: {
-    [fetchBoards.pending.toString()]: (state) => {
-      state.status = 'pending';
-    },
-    [fetchBoards.fulfilled.toString()]: (state, { payload }) => {
-      state.boards = payload;
-      state.status = 'success';
-    },
-    [fetchBoards.rejected.toString()]: (state) => {
-      state.status = 'failed';
-    },
-    [createBoard.pending.toString()]: (state) => {
-      state.isRequesting = true;
-      state.status = 'pending';
-    },
-    [createBoard.fulfilled.toString()]: (state) => {
-      state.isRequesting = false;
-      state.status = 'success';
-    },
-    [createBoard.rejected.toString()]: (state) => {
-      state.isRequesting = false;
-      state.status = 'failed';
-    }
+    return response.json();
   }
+);
+
+export const createBoard = createAsyncThunk<Board, void, { state: RootState }>(
+  'boards/createBoard',
+  async (_, { getState }) => {
+    const state = getState();
+    const board = state.board.board;
+    const response = await fetch(`${host}/api/boards`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...board,
+        createdBy: state.user.id,
+        backgroundImage: board.backgroundImage || '/boards/board-background.jpg',
+      }),
+    });
+
+    return response.json();
+  }
+);
+
+const boardsSlice = createSlice({
+  name: 'boards',
+  initialState,
+  reducers: {
+    resetBoards: () => initialState,
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchBoards.pending, (state) => {
+        state.status = 'pending';
+      })
+      .addCase(fetchBoards.fulfilled, (state, action) => {
+        state.boards = action.payload;
+        state.status = 'success';
+      })
+      .addCase(fetchBoards.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message ?? 'Unable to fetch boards';
+      })
+      .addCase(createBoard.pending, (state) => {
+        state.isRequesting = true;
+        state.status = 'pending';
+      })
+      .addCase(createBoard.fulfilled, (state, action) => {
+        state.boards = [...state.boards, action.payload];
+        state.isRequesting = false;
+        state.status = 'success';
+      })
+      .addCase(createBoard.rejected, (state, action) => {
+        state.isRequesting = false;
+        state.status = 'failed';
+        state.error = action.error.message ?? 'Unable to create board';
+      });
+  },
 });
 
-export const { resetBoards } = boardSlice.actions;
+export const { resetBoards } = boardsSlice.actions;
 
-export default boardSlice.reducer;
+export default boardsSlice.reducer;

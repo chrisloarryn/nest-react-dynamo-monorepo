@@ -1,184 +1,191 @@
-import React, { useState, FC, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, useDisclosure } from '@chakra-ui/react';
+import { monitorForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
 import AddColumnButton from './buttons/add-column-button';
 import CardDetailsModal from './modals/card-details-modal';
 import Column from './column';
-import { CardDetail } from '../../../types/cards';
-import { useAppSelector } from '../../../hooks';
-import { useDispatch } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../../../hooks';
+import { fetchBoard } from '../../../slices/board';
 import {
-  addColumnToBoard,
-  fetchColumns,
-  updateColumnSequenceToLocalState,
-  updateColumnSequence
-} from './../../../slices/columns';
-import { fetchCards, updateCardSequence, updateCardSequenceToLocalState } from './../../../slices/cards';
+  createCardOrderPatches,
+  createColumnOrderPatches,
+  reorderCards,
+  reorderColumns,
+} from '../../../util/ordering';
+import { addColumnToBoard, fetchColumns, persistColumnOrders, setColumns } from '../../../slices/columns';
+import { fetchCards, persistCardOrders, setCards } from '../../../slices/cards';
+import { fetchUsers } from '../../../slices/users';
+import {
+  isCardDragData,
+  isColumnBodyDropData,
+  isColumnDragData,
+} from './dnd-data';
 
-import shortId from 'shortid';
-import { DragDropContext, Droppable } from 'react-beautiful-dnd';
-
-const BoardColumns: FC = (): JSX.Element => {
-  const dispatch = useDispatch();
-
+const BoardColumns = () => {
+  const dispatch = useAppDispatch();
   const columns = useAppSelector((state) => state.columns.columns);
   const cards = useAppSelector((state) => state.cards.cards);
-
+  const board = useAppSelector((state) => state.board.board);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [cardDetail, setCardDetail] = useState<CardDetail>({ id: '', title: '', description: '' });
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const columnsRef = useRef(columns);
+  const cardsRef = useRef(cards);
+
+  useEffect(() => {
+    columnsRef.current = columns;
+  }, [columns]);
+
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+
+  useEffect(() => {
+    void dispatch(fetchBoard(board.id));
+    void dispatch(fetchColumns());
+    void dispatch(fetchCards());
+  }, [board.id, dispatch]);
+
+  useEffect(() => {
+    if (!board.createdBy && board.users.length === 0) {
+      return;
+    }
+
+    void dispatch(fetchUsers());
+  }, [board.createdBy, board.users, dispatch]);
+
+  useEffect(() => {
+    return monitorForElements({
+      canMonitor: ({ source }) =>
+        source.data.type === 'card' || source.data.type === 'column',
+      onDrop: ({ source, location }) => {
+        const dropTargets = location.current.dropTargets;
+
+        if (isColumnDragData(source.data)) {
+          const target = dropTargets.find((dropTarget) => isColumnDragData(dropTarget.data));
+
+          if (!target || !isColumnDragData(target.data) || target.data.columnId === source.data.columnId) {
+            return;
+          }
+
+          const edge = extractClosestEdge(target.data);
+          if (edge !== 'left' && edge !== 'right') {
+            return;
+          }
+
+          const nextColumns = reorderColumns(
+            columnsRef.current,
+            source.data.columnId,
+            target.data.columnId,
+            edge
+          );
+
+          dispatch(setColumns(nextColumns));
+          void dispatch(persistColumnOrders(createColumnOrderPatches(nextColumns)));
+          return;
+        }
+
+        if (!isCardDragData(source.data)) {
+          return;
+        }
+
+        const cardTarget = dropTargets.find((dropTarget) => isCardDragData(dropTarget.data));
+        const columnBodyTarget = dropTargets.find((dropTarget) =>
+          isColumnBodyDropData(dropTarget.data)
+        );
+
+        const sourceCard = cardsRef.current.find((card) => card.id === source.data.cardId);
+        if (!sourceCard) {
+          return;
+        }
+
+        const affectedColumns = new Set<string>([sourceCard.columnId]);
+
+        if (cardTarget && isCardDragData(cardTarget.data)) {
+          const edge = extractClosestEdge(cardTarget.data);
+          if (edge !== 'top' && edge !== 'bottom') {
+            return;
+          }
+
+          const targetCard = cardsRef.current.find((card) => card.id === cardTarget.data.cardId);
+          if (!targetCard) {
+            return;
+          }
+
+          affectedColumns.add(targetCard.columnId);
+          const nextCards = reorderCards(cardsRef.current, source.data.cardId, {
+            type: 'card',
+            cardId: cardTarget.data.cardId,
+            edge,
+          });
+
+          dispatch(setCards(nextCards));
+          void dispatch(
+            persistCardOrders(createCardOrderPatches(nextCards, [...affectedColumns]))
+          );
+          return;
+        }
+
+        if (columnBodyTarget && isColumnBodyDropData(columnBodyTarget.data)) {
+          affectedColumns.add(columnBodyTarget.data.columnId);
+          const nextCards = reorderCards(cardsRef.current, source.data.cardId, {
+            type: 'column',
+            columnId: columnBodyTarget.data.columnId,
+          });
+
+          dispatch(setCards(nextCards));
+          void dispatch(
+            persistCardOrders(createCardOrderPatches(nextCards, [...affectedColumns]))
+          );
+        }
+      },
+    });
+  }, [dispatch]);
+
+  const orderedColumns = [...columns].sort((left, right) => left.order - right.order);
+  const selectedCard = useMemo(
+    () => cards.find((card) => card.id === selectedCardId) ?? null,
+    [cards, selectedCardId]
+  );
 
   const showCardDetail = (cardId: string) => {
-    const card = cards.filter((card) => card.id == cardId);
-
-    console.log('card', JSON.stringify(card, null, 2));
-
-    setCardDetail(card[0]);
+    setSelectedCardId(cardId);
     onOpen();
   };
 
   const addColumn = async () => {
-    const columnId = shortId.generate();
-
-    await dispatch(addColumnToBoard(columnId));
-    await dispatch(fetchColumns());
+    await dispatch(addColumnToBoard());
   };
 
-  const filterCards = (columnId: string) => {
-    const filteredCards = cards.filter((card) => card.columnId === columnId);
-
-    return filteredCards;
-  };
-
-  const onDragEnd = async (result) => {
-    const { destination, source, draggableId, type } = result;
-
-    // Don't do anything where there is not destination
-    if (!destination) {
-      return;
-    }
-
-    // Do nothing if the card is put back where it was
-    if (destination.droppableId === source.droppableId && destination.index === source.index) {
-      return;
-    }
-
-    // If card is being dragged
-    if (type === 'card') {
-      await saveCardSequence(destination.index, destination.droppableId, draggableId);
-    }
-
-    // If column is being dragged
-    if (type === 'column') {
-      await saveColumnSequence(destination.index, draggableId);
-    }
-  };
-
-  const saveCardSequence = async (
-    destinationIndex: number,
-    destinationColumnId: string,
-    cardId: string
-  ) => {
-    const cardsFromColumn = cards.filter(
-      (card) => card.columnId === destinationColumnId && card.id !== cardId
-    );
-    const sortedCards = cardsFromColumn.sort((a, b) => a.sequence - b.sequence);
-
-    let sequence = destinationIndex === 0 ? 1 : sortedCards[destinationIndex - 1].sequence + 1;
-
-    const patchCard = {
-      id: cardId,
-      order: sequence,
-      columnId: destinationColumnId
-    };
-
-    // This is just for updating local state so that there won't be any lag after saving the sequence and fetching again
-    // Now we don't to fetch the cards again
-    await dispatch(updateCardSequenceToLocalState(patchCard));
-    await dispatch(updateCardSequence(patchCard));
-
-    for (let i = destinationIndex; i < sortedCards.length; i++) {
-      const card = sortedCards[i];
-      sequence += 1;
-
-      const patchCard = {
-        id: card.id,
-        sequence,
-        columnId: destinationColumnId
-      };
-
-      await dispatch(updateCardSequenceToLocalState(patchCard));
-      await dispatch(updateCardSequence(patchCard));
-    }
-  };
-
-  const saveColumnSequence = async (destinationIndex: number, columnId: string) => {
-    // Remove the column which is dragged from the list
-    const filteredColumns = columns.filter((column) => column.id !== columnId);
-
-    const sortedColumns = filteredColumns.sort((a, b) => a.sequence - b.sequence);
-
-    let sequence = destinationIndex === 0 ? 1 : sortedColumns[destinationIndex - 1].sequence + 1;
-
-    const patchColumn = {
-      _id: columnId,
-      sequence
-    };
-
-    // This is just for updating local state so that there won't be any lag after saving the sequence and fetching again
-    await dispatch(updateColumnSequenceToLocalState(patchColumn));
-    await dispatch(updateColumnSequence(patchColumn));
-
-    for (let i = destinationIndex; i < sortedColumns.length; i++) {
-      const column = sortedColumns[i];
-
-      sequence += 1;
-
-      const patchColumn = {
-        _id: column.id,
-        sequence
-      };
-
-      await dispatch(updateColumnSequenceToLocalState(patchColumn));
-      await dispatch(updateColumnSequence(patchColumn));
-    }
-
-    // Added temporarily to refresh the page on column, otherwise it will not reflect the changes
-    // Will be fixed later
-    window.location.reload();
-  };
-
-  useEffect(() => {
-    dispatch(fetchColumns());
-    dispatch(fetchCards());
-  }, []);
+  const cardsForColumn = (columnId: string) =>
+    cards
+      .filter((card) => card.columnId === columnId)
+      .sort((left, right) => left.order - right.order);
 
   return (
     <Box display="block" position="relative" height="calc(100vh - 90px)" overflowX="auto">
-      <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="all-collumns" direction="horizontal" type="column">
-          {(provided) => (
-            <Box
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              display="flex"
-              position="absolute"
-              overflowY="auto">
-              {columns.map((column, index) => (
-                <Column
-                  key={column.id}
-                  column={column}
-                  id={column.id}
-                  index={index}
-                  cards={filterCards(column.id)}
-                  showCardDetail={showCardDetail}
-                />
-              ))}
-              {provided.placeholder}
-              <AddColumnButton addColumn={addColumn} />
-            </Box>
-          )}
-        </Droppable>
-      </DragDropContext>
-      {isOpen && <CardDetailsModal isOpen={isOpen} onClose={onClose} card={cardDetail} />}
+      <Box display="flex" position="absolute" alignItems="flex-start">
+        {orderedColumns.map((column) => (
+          <Column
+            key={column.id}
+            column={column}
+            cards={cardsForColumn(column.id)}
+            showCardDetail={showCardDetail}
+          />
+        ))}
+        <AddColumnButton addColumn={addColumn} />
+      </Box>
+      {selectedCard ? (
+        <CardDetailsModal
+          key={selectedCard.id}
+          isOpen={isOpen}
+          onClose={() => {
+            setSelectedCardId(null);
+            onClose();
+          }}
+          card={selectedCard}
+        />
+      ) : null}
     </Box>
   );
 };

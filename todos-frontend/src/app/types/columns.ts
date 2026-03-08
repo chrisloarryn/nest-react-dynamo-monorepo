@@ -1,6 +1,10 @@
 export type Column = {
-  _id: string;
-  sequence?: number;
+  id: string;
+  name: string;
+  order: number;
+  boardId: string;
+  archived?: boolean;
+  tasks?: string[];
 };
 
 export type ColumnsSlice = {

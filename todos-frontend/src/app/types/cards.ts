@@ -2,10 +2,14 @@ export type CardDetail = {
   id: string;
   title: string;
   text: string;
-  columnId?: string;
+  status?: string;
+  type?: string;
+  order: number;
+  columnId: string;
+  boardId: string;
+  userId?: string;
   assignedTo?: string;
-  boardId?: string;
-  sequence?: number;
+  archived?: boolean;
   label?: Label;
 };
 

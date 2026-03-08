@@ -1,27 +1,36 @@
-import { v4 } from 'uuid';
-import { Schema } from "dynamoose";
+import { randomUUID } from 'node:crypto';
+import { Schema } from 'dynamoose';
 
-// dynamoose schema with name "board"and properties: id, name, backgroundUrl,ownerId
 export const BoardSchema = new Schema({
-	id: {
-		type: String,
-		hashKey: true,
-		required: false,
-		default: v4()
-	},
-	name: {
-		type: String,
-		required: true,
-	},
-	backgroundUrl: {
-		type: String,
-		required: true,
-	},
-	ownerId: {
-		type: String,
-		required: true,
-	},
+  id: {
+    type: String,
+    hashKey: true,
+    required: false,
+    default: randomUUID,
+  },
+  name: {
+    type: String,
+    required: true,
+  },
+  backgroundImage: {
+    type: String,
+    required: false,
+    default: '',
+  },
+  createdBy: {
+    type: String,
+    required: true,
+  },
+  dateCreated: {
+    type: String,
+    required: false,
+  },
+  users: {
+    type: Array,
+    required: false,
+    default: [],
+    schema: [String],
+  },
 }, {
-	timestamps: true,
+  timestamps: true,
 });
-

@@ -8,17 +8,15 @@ import {
   Delete,
 } from '@nestjs/common';
 import { ListService } from './list.service';
-import { CreateListDto } from './dto/create-list.dto';
-import { UpdateListDto } from './dto/update-list.dto';
-import { List, ListKey } from './interfaces/list.interface';
+import { List } from './interfaces/list.interface';
 
 @Controller('columns')
 export class ListController {
   constructor(private readonly listService: ListService) {}
 
   @Post()
-  create(@Body() createListDto: List) {
-    return this.listService.create(createListDto);
+  create(@Body() list: List) {
+    return this.listService.create(list);
   }
 
   @Get()
@@ -27,17 +25,17 @@ export class ListController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: ListKey) {
+  findOne(@Param('id') id: string) {
     return this.listService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: ListKey, @Body() updateListDto: List) {
-    return this.listService.update(id, updateListDto);
+  update(@Param('id') id: string, @Body() list: List) {
+    return this.listService.update(id, list);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: ListKey) {
+  remove(@Param('id') id: string) {
     return this.listService.remove(id);
   }
 }

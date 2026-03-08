@@ -11,7 +11,7 @@
 			"name": "list",
 			"item": [
 				{
-					"name": "obtener listado de listas",
+					"name": "get lists",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -30,7 +30,7 @@
 					"response": []
 				},
 				{
-					"name": "crear lista",
+					"name": "create list",
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -83,7 +83,7 @@
 			"name": "board",
 			"item": [
 				{
-					"name": "obtener listado de boards",
+					"name": "get boards",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -102,7 +102,7 @@
 					"response": []
 				},
 				{
-					"name": "crear board",
+					"name": "create board",
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -130,7 +130,7 @@
 					"response": []
 				},
 				{
-					"name": "obtener board",
+					"name": "get board",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -155,7 +155,7 @@
 			"name": "task",
 			"item": [
 				{
-					"name": "obtener listado de tasks",
+					"name": "get tasks",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -174,7 +174,7 @@
 					"response": []
 				},
 				{
-					"name": "crear task",
+					"name": "create task",
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -202,7 +202,7 @@
 					"response": []
 				},
 				{
-					"name": "obtener task",
+					"name": "get task",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -228,7 +228,7 @@
 			"name": "user",
 			"item": [
 				{
-					"name": "obtener listado de tasks",
+					"name": "get tasks",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -247,7 +247,7 @@
 					"response": []
 				},
 				{
-					"name": "crear task",
+					"name": "create task",
 					"request": {
 						"method": "POST",
 						"header": [],
@@ -275,7 +275,7 @@
 					"response": []
 				},
 				{
-					"name": "obtener task",
+					"name": "get task",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -295,7 +295,7 @@
 					"response": []
 				},
 				{
-					"name": "eliminar usuario",
+					"name": "delete user",
 					"request": {
 						"method": "DELETE",
 						"header": [],

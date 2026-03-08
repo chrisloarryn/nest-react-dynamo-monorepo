@@ -1,5 +1,3 @@
-import { v4 } from 'uuid';
-
 export enum TaskStatus {
   COMPLETED = 'completed',
   DONE = 'done',
@@ -14,6 +12,7 @@ export interface TaskKey {
 }
 
 export interface Task extends TaskKey {
+  title?: string;
   text: string;
   status: TaskStatus;
   type: string;
@@ -21,17 +20,10 @@ export interface Task extends TaskKey {
   boardId: string;
   columnId: string;
   userId: string;
+  assignedTo?: string;
+  label?: {
+    bg: string;
+    type: string;
+  };
   archived: boolean;
 }
-
-const stubTask: Task = {
-  id: v4(),
-  text: 'Task 1',
-  status: TaskStatus.TODO,
-  type: 'task',
-  order: 1,
-  boardId: v4(),
-  columnId: v4(),
-  userId: v4(),
-  archived: false,
-};

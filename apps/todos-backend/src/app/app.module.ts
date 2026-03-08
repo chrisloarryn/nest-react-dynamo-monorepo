@@ -19,7 +19,6 @@ import { DynamooseModule } from 'nestjs-dynamoose';
         secretAccessKey: 'DUMMYEXAMPLEKEY',
       },
       local: 'http://localhost:8000',
-      logger: true,
     }),
     BoardModule,
     TaskModule,

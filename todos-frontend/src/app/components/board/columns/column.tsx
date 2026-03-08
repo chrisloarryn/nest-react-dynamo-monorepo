@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -6,156 +6,202 @@ import {
   Input,
   Menu,
   MenuButton,
-  MenuList,
+  MenuDivider,
   MenuItem,
+  MenuList,
   Text,
-  MenuDivider
 } from '@chakra-ui/react';
-import { AiOutlineEdit, AiOutlineDelete } from 'react-icons/ai';
+import { AiOutlineDelete, AiOutlineEdit } from 'react-icons/ai';
 import { FiMoreHorizontal } from 'react-icons/fi';
-import Cards from '../../../components/board/columns/cards';
-import { Droppable, Draggable } from 'react-beautiful-dnd';
-import { useDispatch } from 'react-redux';
 import { GrDrag } from 'react-icons/gr';
+import {
+  draggable,
+  dropTargetForElements,
+} from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
+import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
+import { attachClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge';
+import type { CardDetail } from '../../../types/cards';
+import type { Column as ColumnType } from '../../../types/columns';
+import { useAppDispatch, useAppSelector } from '../../../hooks';
+import { addCard } from '../../../slices/cards';
+import { deleteColumn, updateColumn } from '../../../slices/columns';
+import Cards from './cards';
+import { isCardDragData, isColumnDragData } from './dnd-data';
 
-import { deleteColumn, fetchColumns, updateColumn } from '../../../slices/columns';
-import { addCard, fetchCards } from '../../../slices/cards';
-import debounce from 'lodash.debounce';
-import { CardDetail } from '../../../types/cards';
-import { useAppSelector } from '../../../hooks';
+type Props = {
+  showCardDetail: (cardId: string) => void;
+  column: ColumnType;
+  cards: CardDetail[];
+};
 
-const Column = ({ showCardDetail, column, index, id, cards }): JSX.Element => {
-  const dispatch = useDispatch();
-  const [showEditBox, setEditBoxVisibility] = useState<boolean>(false);
+const Column = ({ showCardDetail, column, cards }: Props) => {
+  const dispatch = useAppDispatch();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const dragHandleRef = useRef<HTMLDivElement | null>(null);
+  const cardsAreaRef = useRef<HTMLDivElement | null>(null);
+  const [showEditBox, setEditBoxVisibility] = useState(false);
+  const [columnName, setColumnName] = useState(column.name);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCardDropTarget, setIsCardDropTarget] = useState(false);
   const cardRequest = useAppSelector((state) => state.cards.isRequesting);
+  const hasMounted = useRef(false);
 
-  const [columnName, setColumnName] = useState<string>(column.name);
-  const cardsInSortedSequence = cards.sort(
-    (cardA: CardDetail, cardB: CardDetail) => cardA.order - cardB.order
-  );
+  useEffect(() => {
+    const rootElement = rootRef.current;
+    const dragHandle = dragHandleRef.current;
+    const cardsArea = cardsAreaRef.current;
 
-  const loadColumnTitle = (draggableProps) => {
-    if (showEditBox) {
-      return (
-        <Input
-          bg="white"
-          value={columnName}
-          size="xs"
-          width="60%"
-          ml="20px"
-          onChange={handleChange}
-          onBlur={() => setEditBoxVisibility(false)}
-          onKeyDown={handleKeyDown}
-        />
-      );
+    if (!rootElement || !cardsArea) {
+      return;
     }
 
-    return (
-      <Heading {...draggableProps} as="h6" size="sm" ml="10px" mt="5px" textAlign="center">
-        <Box display="flex">
-          <GrDrag /> {columnName}
-        </Box>
-      </Heading>
+    return combine(
+      draggable({
+        element: rootElement,
+        dragHandle: dragHandle ?? undefined,
+        getInitialData: () => ({
+          type: 'column',
+          columnId: column.id,
+        }),
+        onDragStart: () => setIsDragging(true),
+        onDrop: () => setIsDragging(false),
+      }),
+      dropTargetForElements({
+        element: rootElement,
+        canDrop: ({ source }) =>
+          isColumnDragData(source.data) && source.data.columnId !== column.id,
+        getData: ({ input, element }) =>
+          attachClosestEdge(
+            {
+              type: 'column',
+              columnId: column.id,
+            },
+            {
+              input,
+              element,
+              allowedEdges: ['left', 'right'],
+            }
+          ),
+      }),
+      dropTargetForElements({
+        element: cardsArea,
+        canDrop: ({ source }) => isCardDragData(source.data),
+        getData: () => ({
+          type: 'column-body',
+          columnId: column.id,
+        }),
+        onDragEnter: () => setIsCardDropTarget(true),
+        onDragLeave: () => setIsCardDropTarget(false),
+        onDrop: () => setIsCardDropTarget(false),
+      })
     );
-  };
+  }, [column.id]);
 
-  const handleKeyDown = (e) => {
-    if (e.keyCode === 13) {
-      e.preventDefault();
-      setEditBoxVisibility(false);
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
     }
-  };
+
+    if (columnName === column.name) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void dispatch(
+        updateColumn({
+          id: column.id,
+          name: columnName,
+        })
+      );
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [column.id, column.name, columnName, dispatch]);
 
   const handleCardAdd = async () => {
     await dispatch(addCard(column.id));
-    await dispatch(fetchCards());
-  };
-
-  const handleChange = (e) => {
-    setColumnName(e.target.value);
-    handleColumnNameChange(e.target.value);
   };
 
   const handleColumnDelete = async () => {
-    await dispatch(deleteColumn(id));
-    await dispatch(fetchColumns());
-  };
-
-  const handleColumnNameChange = useCallback(
-    debounce((value) => nameChange(value), 800),
-    []
-  );
-
-  const nameChange = async (value) => {
-    const data = {
-      name: value,
-      id: column.id
-    };
-
-    await dispatch(updateColumn(data));
+    await dispatch(deleteColumn(column.id));
   };
 
   return (
-    <Draggable draggableId={column.id} index={index} key={column.id}>
-      {(provided) => (
-        <Box
-          key={index}
-          width="272px"
-          height="calc(100vh - 90px)"
-          overflowY="auto"
-          mt="10px"
-          mx="10px"
-          {...provided.draggableProps}
-          ref={provided.innerRef}>
-          <Box bg={column.name === 'addColumn' ? '' : '#F0F0F0'} pb="5px" rounded="lg">
-            <Box display="flex" alignItems="center" justifyContent="space-between">
-              {loadColumnTitle(provided.dragHandleProps)}
-              <Box my="10px" mr="10px" cursor="grab" display="flex">
-                <Menu>
-                  <MenuButton aria-label="Options">
-                    <FiMoreHorizontal />
-                  </MenuButton>
-                  <MenuList justifyContent="center" alignItems="center">
-                    <MenuItem onClick={() => setEditBoxVisibility(!showEditBox)}>
-                      <AiOutlineEdit />
-                      <Text marginLeft="5px">Edit</Text>
-                    </MenuItem>
-                    <MenuDivider />
-                    <MenuItem onClick={handleColumnDelete}>
-                      <AiOutlineDelete />
-                      <Text marginLeft="5px">Delete</Text>
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
+    <Box
+      ref={rootRef}
+      width="272px"
+      minWidth="272px"
+      maxHeight="calc(100vh - 160px)"
+      overflowY="auto"
+      mt="10px"
+      mx="10px"
+      bg={isDragging ? 'whiteAlpha.900' : 'gray.100'}
+      borderRadius="lg"
+      boxShadow={isDragging ? 'lg' : 'sm'}
+      borderWidth="1px"
+      borderColor={isCardDropTarget ? 'blue.300' : 'transparent'}
+    >
+      <Box pb="5px" rounded="lg">
+        <Box display="flex" alignItems="center" justifyContent="space-between" p="3">
+          {showEditBox ? (
+            <Input
+              bg="white"
+              value={columnName}
+              size="sm"
+              onChange={(event) => setColumnName(event.target.value)}
+              onBlur={() => setEditBoxVisibility(false)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  setEditBoxVisibility(false);
+                }
+              }}
+            />
+          ) : (
+            <Heading as="h3" size="sm" display="flex" gap="2" alignItems="center">
+              <Box ref={dragHandleRef} display="flex" alignItems="center" gap="2" cursor="grab">
+                <GrDrag />
+                <Text>{columnName}</Text>
               </Box>
-            </Box>
-            <Droppable droppableId={column.id} type="card">
-              {(provided) => (
-                // 2px height is needed to make the drop work when there is no card.
-                <Box ref={provided.innerRef} {...provided.droppableProps} minHeight="2px">
-                  <Cards showCardDetail={showCardDetail} cards={cardsInSortedSequence} />
-                  {provided.placeholder}
-                </Box>
-              )}
-            </Droppable>
-            <Button
-              size="xs"
-              my="10px"
-              mx="auto"
-              width="80%"
-              color="black"
-              variant="ghost"
-              disabled={cardRequest}
-              isLoading={cardRequest}
-              display="flex"
-              loadingText="Adding card"
-              onClick={handleCardAdd}>
-              + Add a card
-            </Button>
-          </Box>
+            </Heading>
+          )}
+          <Menu>
+            <MenuButton aria-label="Column options">
+              <FiMoreHorizontal />
+            </MenuButton>
+            <MenuList>
+              <MenuItem onClick={() => setEditBoxVisibility((value) => !value)}>
+                <AiOutlineEdit />
+                <Text marginLeft="5px">Edit</Text>
+              </MenuItem>
+              <MenuDivider />
+              <MenuItem onClick={handleColumnDelete}>
+                <AiOutlineDelete />
+                <Text marginLeft="5px">Delete</Text>
+              </MenuItem>
+            </MenuList>
+          </Menu>
         </Box>
-      )}
-    </Draggable>
+        <Box ref={cardsAreaRef} minHeight="80px" px="2" py="1">
+          <Cards showCardDetail={showCardDetail} cards={cards} />
+        </Box>
+        <Button
+          size="sm"
+          my="3"
+          mx="auto"
+          width="calc(100% - 24px)"
+          color="gray.700"
+          variant="ghost"
+          isDisabled={cardRequest}
+          isLoading={cardRequest}
+          loadingText="Adding card"
+          onClick={handleCardAdd}
+        >
+          + Add a card
+        </Button>
+      </Box>
+    </Box>
   );
 };
 

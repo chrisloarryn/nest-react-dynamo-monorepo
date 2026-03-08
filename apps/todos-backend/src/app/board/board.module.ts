@@ -14,6 +14,8 @@ import { TaskSchema } from '../task/entities/task.entity';
         schema: BoardSchema,
         options: {
           tableName: 'boards',
+          create: false,
+          waitForActive: false,
         },
       },
       {
@@ -21,6 +23,8 @@ import { TaskSchema } from '../task/entities/task.entity';
         schema: ListSchema,
         options: {
           tableName: 'lists',
+          create: false,
+          waitForActive: false,
         },
       },
       {
@@ -28,6 +32,8 @@ import { TaskSchema } from '../task/entities/task.entity';
         schema: TaskSchema,
         options: {
           tableName: 'tasks',
+          create: false,
+          waitForActive: false,
         },
       },
     ]),

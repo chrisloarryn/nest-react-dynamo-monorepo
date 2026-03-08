@@ -1,14 +1,13 @@
-import { v4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { Schema } from 'dynamoose';
 
-// dynamoose schema with name "list"and properties: id, name, order, boardId, archived, tasks.
 export const ListSchema = new Schema(
   {
     id: {
       type: String,
       hashKey: true,
       required: false,
-      default: v4(),
+      default: randomUUID,
     },
     name: {
       type: String,
@@ -39,6 +38,7 @@ export const ListSchema = new Schema(
       type: Array,
       required: false,
       default: [],
+      schema: [String],
     },
   },
   {

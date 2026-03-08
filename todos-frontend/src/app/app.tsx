@@ -1,16 +1,6 @@
-import styled from 'styled-components';
-
-import NxWelcome from './nx-welcome';
 import { ChakraProvider, extendTheme } from '@chakra-ui/react';
-
-import { Route, Routes, Link } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { TodoPage } from './pages/todo';
-// import 'nprogress/nprogress.css';
-
-const StyledApp = styled.div`
-  // Your style here
-`;
-
 
 const theme = extendTheme({
   colors: {
@@ -30,32 +20,11 @@ const theme = extendTheme({
 
 export function App() {
   return (
-      <ChakraProvider theme={theme}>
-
-    <StyledApp>
-      {/* <NxWelcome title="todo-react" /> */}
-      <br />
-      <hr />
-      <br />
-      {/* <div role="navigation">
-        <ul>
-          <li>
-            <Link to="/">Home</Link>
-          </li>
-          <li>
-            <Link to="/todos">Todos</Link>
-          </li>
-        </ul>
-      </div> */}
+    <ChakraProvider theme={theme}>
       <Routes>
-        <Route
-          path="/"
-          Component={TodoPage}
-        />
+        <Route path="/" Component={TodoPage} />
       </Routes>
-      {/* END: routes */}
-      </StyledApp>
-      </ChakraProvider>
+    </ChakraProvider>
   );
 }
 

@@ -5,36 +5,35 @@ import boardSlice from './slices/board';
 import columnsSlice from './slices/columns';
 import cardsSlice from './slices/cards';
 import usersSlice from './slices/users';
-import { ToolkitStore } from '@reduxjs/toolkit/dist/configureStore';
 
-const createStore = (
-  preloadedState = {} as RootState
-): ToolkitStore<RootState> => {
-  return configureStore({
-    reducer: {
-      boards: boardsSlice,
-      board: boardSlice,
-      user: userSlice,
-      columns: columnsSlice,
-      cards: cardsSlice,
-      users: usersSlice,
-    },
-    preloadedState,
-  });
+const reducer = {
+  boards: boardsSlice,
+  user: userSlice,
+  board: boardSlice,
+  columns: columnsSlice,
+  cards: cardsSlice,
+  users: usersSlice,
 };
 
-const store = configureStore({
-  reducer: {
-    boards: boardsSlice,
-    user: userSlice,
-    board: boardSlice,
-    columns: columnsSlice,
-    cards: cardsSlice,
-    users: usersSlice,
-  },
-});
+type StoreState = {
+  boards: ReturnType<typeof boardsSlice>;
+  user: ReturnType<typeof userSlice>;
+  board: ReturnType<typeof boardSlice>;
+  columns: ReturnType<typeof columnsSlice>;
+  cards: ReturnType<typeof cardsSlice>;
+  users: ReturnType<typeof usersSlice>;
+};
 
-export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch;
+export const makeStore = (preloadedState?: Partial<StoreState>) =>
+  configureStore({
+    reducer,
+    preloadedState: preloadedState as StoreState | undefined,
+  });
+
+export type AppStore = ReturnType<typeof makeStore>;
+export type RootState = StoreState;
+export type AppDispatch = AppStore['dispatch'];
+
+const createStore = makeStore;
 
 export default createStore;

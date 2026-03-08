@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import checkEnvironment from '../util/check-environment';
-import { UserDetail } from '../types/user';
+import type { UserDetail } from '../types/user';
 
 const initialState: UserDetail = {
   id: 'a567b908-b640-422c-978c-a7381c0b3925',
@@ -18,61 +18,41 @@ const initialState: UserDetail = {
 
 const host = checkEnvironment();
 
-export const fetchUser = createAsyncThunk(
-  'users/fetchUser',
-  async (obj, { getState }) => {
-    const { user } = getState() as { user: UserDetail };
+export const fetchUser = createAsyncThunk<
+  { id: string; email: string; fullName: string },
+  void,
+  { state: { user: UserDetail } }
+>('users/fetchUser', async (_, { getState }) => {
+  const userId = getState().user.id;
+  const response = await fetch(`${host}/api/users/${userId}`);
 
-    const response = await fetch(`${host}/api/users/${user.id}`);
-    const responseInjson = await response.json();
-
-    return responseInjson;
-  }
-);
-
-export const verifyEmail = createAsyncThunk('verify-email', async (email) => {
-  const response = await fetch(`${host}/api/verify-email/?email=${email}`);
-  const responseInjson = await response.json();
-
-  return responseInjson;
+  return response.json();
 });
 
-export const userSlice = createSlice({
+const userSlice = createSlice({
   name: 'user',
-  initialState: initialState,
+  initialState,
   reducers: {
-    updateUserData: (state, { payload }) => {
-      state[payload.type] = payload.value;
+    updateUserData: (state, action) => {
+      Object.assign(state, action.payload);
     },
     resetUserData: () => initialState,
   },
-  extraReducers: {
-    [fetchUser.pending.toString()]: (state) => {
-      state.status = 'pending';
-    },
-    [fetchUser.fulfilled.toString()]: (state, { payload }) => {
-      state.status = 'success';
-      state.id = payload && payload._id;
-      state.email = payload && payload.email;
-      state.fullName = payload && payload.fullName;
-    },
-    [fetchUser.rejected.toString()]: (state, { payload }) => {
-      state.status = 'failed';
-      state.error = payload && payload.error;
-      state.message = payload && payload.message;
-    },
-    [verifyEmail.pending.toString()]: (state) => {
-      state.status = 'pending';
-    },
-    [verifyEmail.fulfilled.toString()]: (state, { payload }) => {
-      state.status = 'success';
-      state.status = payload && payload.status;
-      state.message = payload && payload.message;
-    },
-    [verifyEmail.rejected.toString()]: (state, { payload }) => {
-      state.status = 'failed';
-      state.message = payload && payload.message;
-    },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUser.pending, (state) => {
+        state.status = 'pending';
+      })
+      .addCase(fetchUser.fulfilled, (state, action) => {
+        state.status = 'success';
+        state.id = action.payload.id;
+        state.email = action.payload.email;
+        state.fullName = action.payload.fullName;
+      })
+      .addCase(fetchUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message ?? 'Unable to fetch user';
+      });
   },
 });
 

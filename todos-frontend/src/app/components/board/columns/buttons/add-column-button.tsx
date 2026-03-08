@@ -1,42 +1,37 @@
-import React, { FC } from 'react';
 import { Box, Button } from '@chakra-ui/react';
-import PropTypes from 'prop-types';
 import { useAppSelector } from '../../../../hooks';
 
 type Props = {
   addColumn: () => void;
 };
 
-const AddColumnButton: FC<Props> = ({ addColumn }) => {
+const AddColumnButton = ({ addColumn }: Props) => {
   const columnRequest = useAppSelector((state) => state.columns.isRequesting);
 
   return (
     <Box
       rounded="lg"
-      height="auto"
       width="272px"
       display="flex"
       flexDirection="column"
       mt="10px"
-      mx="10px">
+      mx="10px"
+    >
       <Button
-        size="xs"
+        size="sm"
         my="10px"
         mx="5px"
-        backgroundColor="primary"
-        color="black"
+        bg="whiteAlpha.800"
+        color="gray.800"
         onClick={addColumn}
         isLoading={columnRequest}
-        disabled={columnRequest}
-        loadingText="Adding column">
-        + Add a Column
+        isDisabled={columnRequest}
+        loadingText="Adding column"
+      >
+        + Add a column
       </Button>
     </Box>
   );
-};
-
-AddColumnButton.propTypes = {
-  addColumn: PropTypes.func
 };
 
 export default AddColumnButton;

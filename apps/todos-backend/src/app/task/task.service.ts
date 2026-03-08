@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task, TaskKey } from './interfaces/task.interface';
 import { InjectModel, Model } from 'nestjs-dynamoose';
 
@@ -11,23 +9,25 @@ export class TaskService {
     private readonly taskModel: Model<Task, TaskKey>
   ) { }
   
-  create(createTaskDto: Task) {
-    return this.taskModel.create(createTaskDto);
+  create(task: Task) {
+    return this.taskModel.create(task);
   }
 
   findAll() {
     return this.taskModel.scan().exec();
   }
 
-  findOne(id: TaskKey) {
-    return this.taskModel.get(id);
+  findOne(id: string) {
+    return this.taskModel.get({ id });
   }
 
-  update(id: TaskKey, updateTaskDto: Task) {
-    return this.taskModel.update(id, updateTaskDto);
+  update(id: string, task: Task) {
+    return this.taskModel.update({ id }, { ...task, id });
   }
 
-  remove(id: TaskKey) {
-    return this.taskModel.delete(id);
+  async remove(id: string) {
+    await this.taskModel.delete({ id });
+
+    return { deleted: true, id };
   }
 }

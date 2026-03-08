@@ -1,17 +1,19 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import checkEnvironment from '../util/check-environment';
-import { BoardSlice } from '../types/boards';
+import type { RootState } from '../store';
+import type { Board, BoardSlice } from '../types/boards';
 
-const initialState = {
-  board: {
-    _id: '59a22152-ad94-45e4-bd02-c903258c76a7',
-    name: '',
-    columns: [],
-    createdBy: '',
-    dateCreated: '',
-    backgroundImage: '',
-    users: [],
-  },
+const initialBoard: Board = {
+  id: '59a22152-ad94-45e4-bd02-c903258c76a7',
+  name: '',
+  createdBy: '',
+  dateCreated: '',
+  backgroundImage: '',
+  users: [],
+};
+
+const initialState: BoardSlice = {
+  board: initialBoard,
   status: 'idle',
   isLoading: false,
   error: '',
@@ -19,123 +21,98 @@ const initialState = {
 
 const host = checkEnvironment();
 
-export const saveBoard = createAsyncThunk(
+export const saveBoard = createAsyncThunk<Board, void, { state: RootState }>(
   'board/save',
-  async (obj, { getState }) => {
-    const { board } = getState() as { board: BoardSlice };
-
-    const data = {
-      _id: board.board._id,
-      name: board.board.name,
-      dateCreated: board.board.dateCreated,
-      createdBy: board.board.createdBy,
-      backgroundImage: board.board.backgroundImage,
-    };
-
-    const url = `${host}/api/boards/${data._id}`;
-
-    const response = await fetch(url, {
+  async (_, { getState }) => {
+    const board = getState().board.board;
+    const response = await fetch(`${host}/api/boards/${board.id}`, {
       method: 'PATCH',
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
       },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
-      body: JSON.stringify(data),
+      body: JSON.stringify(board),
     });
 
-    const json = await response.json();
-
-    return json;
+    return response.json();
   }
 );
 
-export const fetchBoard = createAsyncThunk(
+export const fetchBoard = createAsyncThunk<Board, string>(
   'board/get',
-  async (slug: string) => {
-    const url = `${host}/api/boards/${slug}`;
+  async (id) => {
+    const response = await fetch(`${host}/api/boards/${id}`);
 
-    const response = await fetch(url);
-    const json = await response.json();
-
-    return json;
+    return response.json();
   }
 );
 
-export const deleteBoard = createAsyncThunk(
+export const deleteBoard = createAsyncThunk<{ deleted: boolean; id: string }, void, { state: RootState }>(
   'board/delete',
-  async (obj, { getState }) => {
-    const { board } = getState() as { board: BoardSlice };
-
-    const _id = board.board._id;
-
-    const url = `${host}/api/boards/${_id}`;
-
-    const response = await fetch(url, {
+  async (_, { getState }) => {
+    const boardId = getState().board.board.id;
+    const response = await fetch(`${host}/api/boards/${boardId}`, {
       method: 'DELETE',
-      mode: 'cors',
-      cache: 'no-cache',
-      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
       },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer',
     });
 
-    const json = await response.json();
-
-    return json;
+    return response.json();
   }
 );
 
-export const boardSlice = createSlice({
+const boardSlice = createSlice({
   name: 'board',
   initialState,
   reducers: {
-    updateBoardDetail: (state, { payload }) => {
-      state.board[payload.type] = payload.value;
+    updateBoardDetail: (state, action) => {
+      state.board = {
+        ...state.board,
+        ...action.payload,
+      };
     },
     resetBoard: () => initialState,
   },
-  extraReducers: {
-    [fetchBoard.pending.toString()]: (state) => {
-      state.status = 'pending';
-    },
-    [fetchBoard.fulfilled.toString()]: (state, { payload }) => {
-      state.board = payload;
-      state.status = 'success';
-    },
-    [fetchBoard.rejected.toString()]: (state) => {
-      state.status = 'failed';
-    },
-    [saveBoard.pending.toString()]: (state) => {
-      state.status = 'pending';
-      state.isLoading = true;
-    },
-    [saveBoard.fulfilled.toString()]: (state, { payload }) => {
-      state.isLoading = false;
-      state.status = 'success';
-    },
-    [saveBoard.rejected.toString()]: (state) => {
-      state.status = 'failed';
-      state.isLoading = false;
-    },
-    [deleteBoard.pending.toString()]: (state) => {
-      state.status = 'pending';
-      state.isLoading = true;
-    },
-    [deleteBoard.fulfilled.toString()]: (state) => {
-      state.isLoading = false;
-      state.status = 'success';
-    },
-    [deleteBoard.rejected.toString()]: (state) => {
-      state.status = 'failed';
-      state.isLoading = false;
-    },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchBoard.pending, (state) => {
+        state.status = 'pending';
+      })
+      .addCase(fetchBoard.fulfilled, (state, action) => {
+        state.board = action.payload;
+        state.status = 'success';
+      })
+      .addCase(fetchBoard.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message ?? 'Unable to fetch board';
+      })
+      .addCase(saveBoard.pending, (state) => {
+        state.status = 'pending';
+        state.isLoading = true;
+      })
+      .addCase(saveBoard.fulfilled, (state, action) => {
+        state.board = action.payload;
+        state.isLoading = false;
+        state.status = 'success';
+      })
+      .addCase(saveBoard.rejected, (state, action) => {
+        state.status = 'failed';
+        state.isLoading = false;
+        state.error = action.error.message ?? 'Unable to save board';
+      })
+      .addCase(deleteBoard.pending, (state) => {
+        state.status = 'pending';
+        state.isLoading = true;
+      })
+      .addCase(deleteBoard.fulfilled, (state) => {
+        state.isLoading = false;
+        state.status = 'success';
+      })
+      .addCase(deleteBoard.rejected, (state, action) => {
+        state.status = 'failed';
+        state.isLoading = false;
+        state.error = action.error.message ?? 'Unable to delete board';
+      });
   },
 });
 

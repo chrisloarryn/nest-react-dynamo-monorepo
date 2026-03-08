@@ -1,20 +1,19 @@
-import { v4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 import { Schema } from 'dynamoose';
 import { TaskStatus } from '../interfaces/task.interface';
 
-// dynamoose schema with name "task"and properties: id, text, order, archived.
 export const TaskSchema = new Schema(
   {
     id: {
       type: String,
       hashKey: true,
       required: false,
-      default: v4(),
+      default: randomUUID,
     },
     title: {
       type: String,
       required: false,
-      default: '',
+      default: 'Add title',
     },
     text: {
       type: String,
@@ -53,6 +52,25 @@ export const TaskSchema = new Schema(
     columnId: {
       type: String,
       required: true,
+    },
+    assignedTo: {
+      type: String,
+      required: false,
+      default: '',
+    },
+    label: {
+      type: Object,
+      required: false,
+      schema: {
+        bg: {
+          type: String,
+          required: false,
+        },
+        type: {
+          type: String,
+          required: false,
+        },
+      },
     },
     archived: {
       type: Boolean,

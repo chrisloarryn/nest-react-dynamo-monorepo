@@ -1,18 +1,21 @@
-import React, { FC } from 'react';
-import 'react-quill/dist/quill.snow.css';
 import { Box } from '@chakra-ui/react';
-//https://github.com/zenoamaro/react-quill/issues/122
-import ReactQuill from 'react-quill';
+import 'react-quill-new/dist/quill.snow.css';
+import ReactQuill from 'react-quill-new';
 
-const QuillEditor: FC = ({ value, onChange }) => {
+type Props = {
+  value: string;
+  onChange: (value: string) => void;
+};
+
+const QuillEditor = ({ value, onChange }: Props) => {
   const modules = {
     toolbar: [
       [{ header: [1, 2, false] }],
       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
       [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
       ['link', 'image'],
-      ['clean']
-    ]
+      ['clean'],
+    ],
   };
 
   const formats = [
@@ -26,7 +29,7 @@ const QuillEditor: FC = ({ value, onChange }) => {
     'bullet',
     'indent',
     'link',
-    'image'
+    'image',
   ];
 
   return (
@@ -35,9 +38,10 @@ const QuillEditor: FC = ({ value, onChange }) => {
         theme="snow"
         style={{ height: '120px' }}
         value={value}
-        onChange={(value) => onChange(value)}
+        onChange={onChange}
         modules={modules}
-        formats={formats}></ReactQuill>
+        formats={formats}
+      />
     </Box>
   );
 };

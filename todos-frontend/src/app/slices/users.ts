@@ -1,60 +1,62 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import checkEnvironment from '../util/check-environment';
-import { BoardSlice } from '../types/boards';
+import type { RootState } from '../store';
 
-const initialState = {
+type BoardUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string;
+};
+
+type UsersState = {
+  users: BoardUser[];
+  fetching: boolean;
+  status: 'idle' | 'pending' | 'success' | 'failed';
+  error: string;
+};
+
+const initialState: UsersState = {
   users: [],
   fetching: false,
   status: 'idle',
-  error: ''
+  error: '',
 };
 
 const host = checkEnvironment();
 
-export const fetchUsers = createAsyncThunk('users/fetchUsers', async (obj, { getState }) => {
-  const { board } = getState() as { board: BoardSlice };
-  let users = board.board.users;
-  const createdBy = board.board.createdBy;
+export const fetchUsers = createAsyncThunk<BoardUser[], void, { state: RootState }>(
+  'users/fetchUsers',
+  async (_, { getState }) => {
+    const board = getState().board.board;
+    const ids = Array.from(new Set([board.createdBy, ...board.users].filter(Boolean)));
 
-  users = [...users, createdBy];
+    const responses = await Promise.all(ids.map((id) => fetch(`${host}/api/users/${id}`)));
 
-  let userPromise = [];
-  for (let i = 0; i < users.length; i++) {
-    userPromise.push(fetch(`${host}/api/users/${users[i]}`));
+    return Promise.all(responses.map((response) => response.json()));
   }
+);
 
-  userPromise = await Promise.all(userPromise);
-  const jsonPromise = [];
-
-  for (let i = 0; i < userPromise.length; i++) {
-    const json = userPromise[i].json();
-    jsonPromise.push(json);
-  }
-
-  const usersData = await Promise.all(jsonPromise);
-
-  return usersData;
-});
-
-export const usersSlice = createSlice({
+const usersSlice = createSlice({
   name: 'users',
   initialState,
   reducers: {
-    resetUsersData: () => initialState
+    resetUsersData: () => initialState,
   },
-  extraReducers: {
-    [fetchUsers.pending.toString()]: (state) => {
-      state.status = 'pending';
-    },
-    [fetchUsers.fulfilled.toString()]: (state, { payload }) => {
-      state.status = 'success';
-      state.users = payload;
-    },
-    [fetchUsers.rejected.toString()]: (state, { payload }) => {
-      state.status = 'failed';
-      state.error = payload && payload.error;
-    }
-  }
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchUsers.pending, (state) => {
+        state.status = 'pending';
+      })
+      .addCase(fetchUsers.fulfilled, (state, action) => {
+        state.status = 'success';
+        state.users = action.payload;
+      })
+      .addCase(fetchUsers.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message ?? 'Unable to fetch users';
+      });
+  },
 });
 
 export const { resetUsersData } = usersSlice.actions;

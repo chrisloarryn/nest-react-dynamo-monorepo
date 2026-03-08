@@ -1,6 +1,4 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { CreateBoardDto } from './dto/create-board.dto';
-import { UpdateBoardDto } from './dto/update-board.dto';
 import { InjectModel, Model } from 'nestjs-dynamoose';
 import { Board, BoardKey } from './interfaces/board.interface';
 import { Task, TaskKey } from '../task/interfaces/task.interface';
@@ -16,16 +14,14 @@ export class BoardService {
     @InjectModel('Task')
     private readonly taskModel: Model<Task, TaskKey>
   ) {}
-  create(createBoardDto: Board) {
-    return this.boardModel.create(createBoardDto);
+
+  create(board: Board) {
+    return this.boardModel.create(board);
   }
 
-  createTask(boardId: string, columnId: string, createTaskDto: Task) {
-    createTaskDto.boardId = boardId;
-    createTaskDto.columnId = columnId;
-
+  createTask(boardId: string, columnId: string, task: Task) {
     const payload: Task = {
-      ...createTaskDto,
+      ...task,
       boardId,
       columnId,
     };
@@ -46,19 +42,29 @@ export class BoardService {
       throw new NotFoundException('Task not found');
     }
 
-    return this.taskModel.delete({ id: cardId });
+    await this.taskModel.delete({ id: cardId });
+
+    return { deleted: true, id: cardId };
   }
 
-  async updateTask(boardId: string, taskId: string, createTaskDto: Task) {
-    const existsTaskByBoardIdAndColumnId =
-      await this.existsTaskByBoardIdAndTaskId(boardId, taskId);
+  async updateTask(boardId: string, taskId: string, task: Task) {
+    const existsTaskByBoardIdAndTaskId = await this.existsTaskByBoardIdAndTaskId(
+      boardId,
+      taskId
+    );
 
-    if (!existsTaskByBoardIdAndColumnId) {
+    if (!existsTaskByBoardIdAndTaskId) {
       throw new NotFoundException('Task not found');
     }
 
-    createTaskDto.boardId = boardId;
-    return this.taskModel.create(createTaskDto);
+    return this.taskModel.update(
+      { id: taskId },
+      {
+        ...task,
+        id: taskId,
+        boardId,
+      }
+    );
   }
 
   async existsTaskByBoardIdAndTaskId(
@@ -87,23 +93,25 @@ export class BoardService {
     return this.boardModel.scan().exec();
   }
 
-  findOne(id: BoardKey) {
-    return this.boardModel.get(id);
+  findOne(id: string) {
+    return this.boardModel.get({ id });
   }
 
-  findColumnsForBoard(id: BoardKey) {
+  findColumnsForBoard(id: string) {
     return this.listModel.scan({ boardId: id }).exec();
   }
 
-  findCardsForBoard(id: BoardKey) {
+  findCardsForBoard(id: string) {
     return this.taskModel.scan({ boardId: id }).exec();
   }
 
-  update(id: BoardKey, updateBoardDto: Board) {
-    return this.boardModel.update(id, updateBoardDto);
+  update(id: string, board: Board) {
+    return this.boardModel.update({ id }, { ...board, id });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} board`;
+  async remove(id: string) {
+    await this.boardModel.delete({ id });
+
+    return { deleted: true, id };
   }
 }

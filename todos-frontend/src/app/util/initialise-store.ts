@@ -1,7 +1,8 @@
-import createStore from '../store';
-let store;
+import createStore, { type RootState } from '../store';
 
-export const setOrGetStore = (preloadedState = {}) => {
+let store: ReturnType<typeof createStore> | undefined;
+
+export const setOrGetStore = (preloadedState: Partial<RootState> = {}) => {
   let _store = store ?? createStore(preloadedState);
 
   if (preloadedState && store) {

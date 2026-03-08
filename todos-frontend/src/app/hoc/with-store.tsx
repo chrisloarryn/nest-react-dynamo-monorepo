@@ -1,40 +1,22 @@
-import React, { Component } from 'react';
+import type { ComponentType } from 'react';
 import { Provider } from 'react-redux';
 import { setOrGetStore } from '../util/initialise-store';
-import { RootState } from '../store';
-import { JSX } from 'react/jsx-runtime';
+import type { RootState } from '../store';
 
 type Props = {
   reduxState: RootState;
 };
 
-const WithStore = (App: JSX.IntrinsicAttributes & any) => {
-  class AppWithStore extends Component<Props> {
-    // eslint-disable-next-line @typescript-eslint/no-useless-constructor
-    constructor(props: Props | Readonly<Props>) {
-      super(props);
-    }
+const WithStore = <P extends object>(AppComponent: ComponentType<P>) => {
+  const AppWithStore = (props: Props & P) => {
+    const { reduxState, ...appProps } = props;
 
-    static async getInitialProps(ctx: { reduxState: any; }) {
-      let appProps = {};
-      if (App.getInitialProps) {
-        appProps = await App.getInitialProps(ctx);
-      }
-
-      return {
-        ...appProps,
-        reduxState: ctx.reduxState || setOrGetStore().getState()
-      };
-    }
-
-    render() {
-      return (
-        <Provider store={setOrGetStore(this.props.reduxState)}>
-          <App />
-        </Provider>
-      );
-    }
-  }
+    return (
+      <Provider store={setOrGetStore(reduxState)}>
+        <AppComponent {...(appProps as P)} />
+      </Provider>
+    );
+  };
 
   return AppWithStore;
 };

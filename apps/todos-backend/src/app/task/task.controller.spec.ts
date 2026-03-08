@@ -4,11 +4,19 @@ import { TaskService } from './task.service';
 
 describe('TaskController', () => {
   let controller: TaskController;
+  const taskService = {
+    findAll: jest.fn().mockResolvedValue([]),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TaskController],
-      providers: [TaskService],
+      providers: [
+        {
+          provide: TaskService,
+          useValue: taskService,
+        },
+      ],
     }).compile();
 
     controller = module.get<TaskController>(TaskController);
@@ -16,5 +24,11 @@ describe('TaskController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('delegates list retrieval to the service', async () => {
+    await controller.findAll();
+
+    expect(taskService.findAll).toHaveBeenCalled();
   });
 });

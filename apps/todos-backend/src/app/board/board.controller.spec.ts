@@ -4,11 +4,19 @@ import { BoardService } from './board.service';
 
 describe('BoardController', () => {
   let controller: BoardController;
+  const boardService = {
+    findAll: jest.fn().mockResolvedValue([]),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [BoardController],
-      providers: [BoardService],
+      providers: [
+        {
+          provide: BoardService,
+          useValue: boardService,
+        },
+      ],
     }).compile();
 
     controller = module.get<BoardController>(BoardController);
@@ -16,5 +24,11 @@ describe('BoardController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('delegates list retrieval to the service', async () => {
+    await controller.findAll();
+
+    expect(boardService.findAll).toHaveBeenCalled();
   });
 });

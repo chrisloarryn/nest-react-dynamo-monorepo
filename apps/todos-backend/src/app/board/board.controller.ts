@@ -8,18 +8,16 @@ import {
   Delete,
 } from '@nestjs/common';
 import { BoardService } from './board.service';
-import { CreateBoardDto } from './dto/create-board.dto';
-import { UpdateBoardDto } from './dto/update-board.dto';
-import { Board, BoardKey } from './interfaces/board.interface';
-import { Task, TaskKey } from '../task/interfaces/task.interface';
+import { Board } from './interfaces/board.interface';
+import { Task } from '../task/interfaces/task.interface';
 
 @Controller('boards')
 export class BoardController {
   constructor(private readonly boardService: BoardService) {}
 
   @Post()
-  create(@Body() createBoardDto: Board) {
-    return this.boardService.create(createBoardDto);
+  create(@Body() board: Board) {
+    return this.boardService.create(board);
   }
 
   @Get()
@@ -28,12 +26,12 @@ export class BoardController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: BoardKey) {
+  findOne(@Param('id') id: string) {
     return this.boardService.findOne(id);
   }
 
   @Get(':id/columns')
-  findColumnsForBoard(@Param('id') id: BoardKey) {
+  findColumnsForBoard(@Param('id') id: string) {
     return this.boardService.findColumnsForBoard(id);
   }
 
@@ -41,46 +39,40 @@ export class BoardController {
   createCard(
     @Param('boardId') boardId: string,
     @Param('columnId') columnId: string,
-    @Body() createBoardDto: Task
+    @Body() task: Task
   ) {
-    return this.boardService.createTask(boardId, columnId, createBoardDto);
+    return this.boardService.createTask(boardId, columnId, task);
   }
 
-  /*
-  @Post(':boardId/cards/:columnId')
-  * deletes the card
-  * @param boardId
-  * @param columnId
-  */
-  @Delete(':boardId/cards/:columnId')
+  @Delete(':boardId/cards/:cardId')
   deleteCard(
     @Param('boardId') boardId: string,
-    @Param('columnId') columnId: string
+    @Param('cardId') cardId: string
   ) {
-    return this.boardService.deleteTaskById(boardId, columnId);
+    return this.boardService.deleteTaskById(boardId, cardId);
   }
 
   @Patch(':boardId/cards/:cardId')
   updateCard(
     @Param('boardId') boardId: string,
     @Param('cardId') cardId: string,
-    @Body() createBoardDto: Task
+    @Body() task: Task
   ) {
-    return this.boardService.updateTask(boardId, cardId, createBoardDto);
+    return this.boardService.updateTask(boardId, cardId, task);
   }
 
   @Get(':id/cards')
-  findCardsForBoard(@Param('id') id: BoardKey) {
+  findCardsForBoard(@Param('id') id: string) {
     return this.boardService.findCardsForBoard(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: BoardKey, @Body() updateBoardDto: Board) {
-    return this.boardService.update(id, updateBoardDto);
+  update(@Param('id') id: string, @Body() board: Board) {
+    return this.boardService.update(id, board);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.boardService.remove(+id);
+    return this.boardService.remove(id);
   }
 }
