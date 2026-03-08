@@ -153,6 +153,8 @@ Generated outputs are written to `reports/`:
 Notes:
 
 - `validate:contract` and `validate:performance` do not require Docker locally; they start their own temporary DynamoDB emulator.
+- `validate:contract` and `validate:performance` do not require `AWS_REGION`, `AWS_ACCESS_KEY_ID`, or `AWS_SECRET_ACCESS_KEY`; the validate runtime injects safe local defaults for CI and local runs.
+- Each validate stage starts an isolated Dynalite instance with its own temporary port and storage directory, so contract and performance runs do not depend on a shared `localhost:8000` process.
 - The GitHub Actions workflow for the same pipeline lives at [`.github/workflows/validate.yml`](./.github/workflows/validate.yml).
 
 ## API overview
@@ -200,7 +202,7 @@ Stop it with:
 docker compose down
 ```
 
-For validation flows, the repo starts and tears down its own local emulator automatically.
+For validation flows, the repo starts and tears down its own local Dynalite emulator automatically. Those runs use an isolated loopback port and a temporary data directory, so they do not reuse the manual Docker-backed emulator from `http://localhost:8000`.
 
 ## Useful files
 
