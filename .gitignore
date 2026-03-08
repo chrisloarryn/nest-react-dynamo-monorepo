@@ -28,6 +28,7 @@ node_modules
 /.sass-cache
 /connect.lock
 /coverage
+/reports
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log
@@ -41,6 +42,4 @@ Thumbs.db
 # custom
 apps/todo-react/*
 
-.nx/cache
-.nx/workspace-data
-.nx/polygraph
+.nx/

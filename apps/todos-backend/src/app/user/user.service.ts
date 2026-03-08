@@ -9,8 +9,8 @@ export class UserService {
     private readonly userModel: Model<User, UserKey>
   ) { }
   
-  create(user: User) {
-    return this.userModel.create(user);
+  create(user: Partial<User>) {
+    return this.userModel.create(user as User);
   }
 
   findAll() {
@@ -21,8 +21,16 @@ export class UserService {
     return this.userModel.get({ id });
   }
 
-  update(id: string, user: User) {
-    return this.userModel.update({ id }, { ...user, id });
+  update(id: string, user: Partial<User>) {
+    const payload = { ...(user as Partial<User> & { id?: string }) };
+    delete payload.id;
+
+    return this.userModel.update(
+      { id },
+      {
+        $SET: payload as User,
+      }
+    );
   }
 
   async remove(id: string) {

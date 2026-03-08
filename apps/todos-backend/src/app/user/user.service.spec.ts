@@ -30,8 +30,32 @@ describe('UserService', () => {
     service = module.get<UserService>(UserService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('creates, lists and gets users', async () => {
+    const user = { id: 'user-1', fullName: 'Ada' };
+    userModel.create.mockResolvedValue(user);
+    userModel.scan.mockReturnValue({ exec: jest.fn().mockResolvedValue([user]) });
+    userModel.get.mockResolvedValue(user);
+
+    await service.create(user);
+    await service.findAll();
+    await service.findOne('user-1');
+
+    expect(userModel.create).toHaveBeenCalledWith(user);
+    expect(userModel.scan).toHaveBeenCalled();
+    expect(userModel.get).toHaveBeenCalledWith({ id: 'user-1' });
+  });
+
+  it('updates a user by id', async () => {
+    userModel.update.mockResolvedValue({ id: 'user-1', fullName: 'Updated Ada' });
+
+    await service.update('user-1', { fullName: 'Updated Ada' });
+
+    expect(userModel.update).toHaveBeenCalledWith(
+      { id: 'user-1' },
+      expect.objectContaining({
+        $SET: expect.objectContaining({ fullName: 'Updated Ada' }),
+      })
+    );
   });
 
   it('removes a user by id', async () => {

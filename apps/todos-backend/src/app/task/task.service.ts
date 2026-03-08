@@ -2,6 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { Task, TaskKey } from './interfaces/task.interface';
 import { InjectModel, Model } from 'nestjs-dynamoose';
 
+const normaliseTask = (task: Partial<Task>): Partial<Task> => ({
+  ...task,
+  label: task.label
+    ? {
+        bg: task.label.bg,
+        type: task.label.type,
+      }
+    : undefined,
+});
+
 @Injectable()
 export class TaskService {
   constructor(
@@ -9,8 +19,8 @@ export class TaskService {
     private readonly taskModel: Model<Task, TaskKey>
   ) { }
   
-  create(task: Task) {
-    return this.taskModel.create(task);
+  create(task: Partial<Task>) {
+    return this.taskModel.create(normaliseTask(task) as Task);
   }
 
   findAll() {
@@ -21,8 +31,18 @@ export class TaskService {
     return this.taskModel.get({ id });
   }
 
-  update(id: string, task: Task) {
-    return this.taskModel.update({ id }, { ...task, id });
+  update(id: string, task: Partial<Task>) {
+    const payload = {
+      ...(normaliseTask(task) as Partial<Task> & { id?: string }),
+    };
+    delete payload.id;
+
+    return this.taskModel.update(
+      { id },
+      {
+        $SET: payload as Task,
+      }
+    );
   }
 
   async remove(id: string) {

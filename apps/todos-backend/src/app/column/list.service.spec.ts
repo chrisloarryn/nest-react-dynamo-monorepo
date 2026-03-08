@@ -30,25 +30,44 @@ describe('ListService', () => {
     service = module.get<ListService>(ListService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('creates, lists and gets columns', async () => {
+    const column = { id: 'column-1', name: 'Doing' };
+    listModel.create.mockResolvedValue(column);
+    listModel.scan.mockReturnValue({ exec: jest.fn().mockResolvedValue([column]) });
+    listModel.get.mockResolvedValue(column);
+
+    await service.create(column);
+    await service.findAll();
+    await service.findOne('column-1');
+
+    expect(listModel.create).toHaveBeenCalledWith(column);
+    expect(listModel.scan).toHaveBeenCalled();
+    expect(listModel.get).toHaveBeenCalledWith({ id: 'column-1' });
   });
 
   it('updates a list by id', async () => {
     listModel.update.mockResolvedValue({ id: 'list-1', name: 'Doing' });
 
     await service.update('list-1', {
-      id: 'list-1',
       name: 'Doing',
       order: 2,
-      boardId: 'board-1',
-      archived: false,
-      tasks: [],
     });
 
     expect(listModel.update).toHaveBeenCalledWith(
       { id: 'list-1' },
-      expect.objectContaining({ name: 'Doing' })
+      expect.objectContaining({
+        $SET: expect.objectContaining({ name: 'Doing' }),
+      })
     );
+  });
+
+  it('removes a list by id', async () => {
+    listModel.delete.mockResolvedValue(undefined);
+
+    await expect(service.remove('list-1')).resolves.toEqual({
+      deleted: true,
+      id: 'list-1',
+    });
+    expect(listModel.delete).toHaveBeenCalledWith({ id: 'list-1' });
   });
 });

@@ -1,8 +1,18 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel, Model } from 'nestjs-dynamoose';
 import { Board, BoardKey } from './interfaces/board.interface';
 import { Task, TaskKey } from '../task/interfaces/task.interface';
 import { List, ListKey } from '../column/interfaces/list.interface';
+
+const normaliseTask = (task: Partial<Task>): Partial<Task> => ({
+  ...task,
+  label: task.label
+    ? {
+        bg: task.label.bg,
+        type: task.label.type,
+      }
+    : undefined,
+});
 
 @Injectable()
 export class BoardService {
@@ -15,21 +25,16 @@ export class BoardService {
     private readonly taskModel: Model<Task, TaskKey>
   ) {}
 
-  create(board: Board) {
-    return this.boardModel.create(board);
+  create(board: Partial<Board>) {
+    return this.boardModel.create(board as Board);
   }
 
-  createTask(boardId: string, columnId: string, task: Task) {
+  createTask(boardId: string, columnId: string, task: Partial<Task>) {
     const payload: Task = {
-      ...task,
+      ...normaliseTask(task),
       boardId,
       columnId,
-    };
-
-    Logger.debug(`createTaskDto`, JSON.stringify(payload, null, 2));
-
-    Logger.debug('boardId', boardId);
-    Logger.debug('columnId', columnId);
+    } as Task;
 
     return this.taskModel.create(payload);
   }
@@ -47,7 +52,7 @@ export class BoardService {
     return { deleted: true, id: cardId };
   }
 
-  async updateTask(boardId: string, taskId: string, task: Task) {
+  async updateTask(boardId: string, taskId: string, task: Partial<Task>) {
     const existsTaskByBoardIdAndTaskId = await this.existsTaskByBoardIdAndTaskId(
       boardId,
       taskId
@@ -57,12 +62,18 @@ export class BoardService {
       throw new NotFoundException('Task not found');
     }
 
+    const payload = {
+      ...(normaliseTask(task) as Partial<Task> & { id?: string }),
+    };
+    delete payload.id;
+
     return this.taskModel.update(
       { id: taskId },
       {
-        ...task,
-        id: taskId,
-        boardId,
+        $SET: {
+          ...payload,
+          boardId,
+        },
       }
     );
   }
@@ -73,8 +84,6 @@ export class BoardService {
   ): Promise<boolean> {
     const tasks = await this.taskModel.scan({ boardId, id: taskId }).exec();
 
-    Logger.debug('tasks', JSON.stringify(tasks, null, 2));
-
     return tasks.length > 0;
   }
 
@@ -83,8 +92,6 @@ export class BoardService {
     columnId: string
   ): Promise<boolean> {
     const tasks = await this.taskModel.scan({ boardId, columnId }).exec();
-
-    Logger.debug('tasks', JSON.stringify(tasks, null, 2));
 
     return tasks.length > 0;
   }
@@ -105,8 +112,16 @@ export class BoardService {
     return this.taskModel.scan({ boardId: id }).exec();
   }
 
-  update(id: string, board: Board) {
-    return this.boardModel.update({ id }, { ...board, id });
+  update(id: string, board: Partial<Board>) {
+    const payload = { ...(board as Partial<Board> & { id?: string }) };
+    delete payload.id;
+
+    return this.boardModel.update(
+      { id },
+      {
+        $SET: payload as Board,
+      }
+    );
   }
 
   async remove(id: string) {

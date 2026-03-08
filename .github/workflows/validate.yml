@@ -1,0 +1,185 @@
+name: Validate Monorepo
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run validate:test
+        run: npm run validate:test
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-tests
+          path: reports/validate
+          if-no-files-found: ignore
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run validate:coverage
+        run: npm run validate:coverage
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-coverage
+          path: |
+            reports/validate
+            coverage/apps/todos-backend
+            coverage/todos-frontend
+          if-no-files-found: ignore
+
+  contracts:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run validate:contract
+        run: npm run validate:contract
+
+      - name: Upload contract artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-contracts
+          path: reports/contracts
+          if-no-files-found: ignore
+
+  performance:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+          cache: npm
+
+      - name: Set up k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run validate:performance
+        run: npm run validate:performance
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-performance
+          path: reports/performance
+          if-no-files-found: ignore
+
+  validation-summary:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - tests
+      - coverage
+      - contracts
+      - performance
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js 25
+        uses: actions/setup-node@v4
+        with:
+          node-version: '25'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download test reports
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: validate-tests
+          path: reports/validate
+
+      - name: Download coverage artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: validate-coverage
+          path: .
+
+      - name: Download contract artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: validate-contracts
+          path: reports/contracts
+
+      - name: Download performance artifacts
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: validate-performance
+          path: reports/performance
+
+      - name: Write validation summary
+        if: always()
+        run: npm run validate:summarize

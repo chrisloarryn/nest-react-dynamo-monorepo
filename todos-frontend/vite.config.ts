@@ -38,7 +38,9 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     coverage: {
+      provider: 'v8',
       reportsDirectory: '../coverage/todos-frontend',
+      reporter: ['text', 'html', 'json-summary', 'lcov'],
     },
   },
 });

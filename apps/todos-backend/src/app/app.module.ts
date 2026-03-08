@@ -11,14 +11,12 @@ import { DynamooseModule } from 'nestjs-dynamoose';
 @Module({
   imports: [
     DynamooseModule.forRoot({
-      // AWS_ACCESS_KEY_ID: 'DUMMYIDEXAMPLE'
-      // AWS_SECRET_ACCESS_KEY: 'DUMMYEXAMPLEKEY'
       aws: {
-        region: 'us-east-1',
-        accessKeyId: 'DUMMYIDEXAMPLE',
-        secretAccessKey: 'DUMMYEXAMPLEKEY',
+        region: process.env.AWS_REGION ?? 'us-east-1',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? 'DUMMYIDEXAMPLE',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? 'DUMMYEXAMPLEKEY',
       },
-      local: 'http://localhost:8000',
+      local: process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8000',
     }),
     BoardModule,
     TaskModule,
