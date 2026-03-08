@@ -1,10 +1,6 @@
 import { resolve } from 'node:path';
 import { buildBackend, startBackend, stopBackend } from './backend-runtime.mjs';
-import {
-  dynamoDbEndpoint,
-  startDynamoDb,
-  stopDynamoDb,
-} from '../dynamodb/runtime.mjs';
+import { startDynamoDb, stopDynamoDb } from '../dynamodb/runtime.mjs';
 import {
   contractsReportsRoot,
   resetDir,
@@ -22,6 +18,7 @@ const main = async () => {
   const dynamoDb = await startDynamoDb({
     logFile: resolve(contractsReportsRoot, 'dynamodb.log'),
   });
+  const dynamoDbEndpoint = dynamoDb.endpoint;
 
   try {
     await runCommand('node', ['tools/dynamodb/bootstrap-tables.mjs'], {
@@ -33,6 +30,10 @@ const main = async () => {
     });
     await runCommand('npm', ['run', 'openapi:generate'], {
       logFile: resolve(contractsReportsRoot, 'openapi.log'),
+      env: {
+        ...process.env,
+        DYNAMODB_ENDPOINT: dynamoDbEndpoint,
+      },
     });
     await buildBackend(buildLog);
 

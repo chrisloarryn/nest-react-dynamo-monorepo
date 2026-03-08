@@ -1,13 +1,56 @@
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 import { DynamoDBClient, ListTablesCommand } from '@aws-sdk/client-dynamodb';
 import { wait, workspaceRoot } from '../validate/lib.mjs';
 
-const endpoint = 'http://127.0.0.1:8000';
+const defaultHost = '127.0.0.1';
+const defaultPort = 8000;
 const dynaliteEntry = resolve(workspaceRoot, 'node_modules/dynalite/cli.js');
 
-const createClient = () =>
+const createEndpoint = (host, port) => `http://${host}:${port}`;
+
+const reservePort = (port, host) =>
+  new Promise((resolvePromise, rejectPromise) => {
+    const server = createServer();
+    server.unref();
+    server.once('error', rejectPromise);
+    server.listen(port, host, () => {
+      const address = server.address();
+      const reservedPort =
+        typeof address === 'object' && address !== null ? address.port : port;
+
+      server.close((error) => {
+        if (error) {
+          rejectPromise(error);
+          return;
+        }
+
+        resolvePromise(reservedPort);
+      });
+    });
+  });
+
+const getAvailablePort = async (preferredPort = defaultPort, host = defaultHost) => {
+  try {
+    return await reservePort(preferredPort, host);
+  } catch (error) {
+    if (error?.code !== 'EADDRINUSE') {
+      throw error;
+    }
+
+    return reservePort(0, host);
+  }
+};
+
+const createClient = (endpoint) =>
   new DynamoDBClient({
     endpoint,
     region: process.env.AWS_REGION ?? 'us-east-1',
@@ -17,8 +60,12 @@ const createClient = () =>
     },
   });
 
-export const waitForDynamoDb = async (attempts = 30, delayMs = 500) => {
-  const client = createClient();
+export const waitForDynamoDb = async (
+  endpoint,
+  attempts = 30,
+  delayMs = 500
+) => {
+  const client = createClient(endpoint);
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
@@ -32,7 +79,16 @@ export const waitForDynamoDb = async (attempts = 30, delayMs = 500) => {
   throw new Error(`DynamoDB emulator did not become ready at ${endpoint}`);
 };
 
-export const startDynamoDb = async ({ logFile } = {}) => {
+export const startDynamoDb = async ({
+  logFile,
+  host = defaultHost,
+  preferredPort = defaultPort,
+} = {}) => {
+  const port = await getAvailablePort(preferredPort, host);
+  const endpoint = createEndpoint(host, port);
+  mkdirSync(resolve(workspaceRoot, '.nx'), { recursive: true });
+  const dataPath = mkdtempSync(resolve(workspaceRoot, '.nx/dynalite-'));
+
   if (logFile) {
     mkdirSync(dirname(logFile), { recursive: true });
     writeFileSync(logFile, '', 'utf8');
@@ -43,11 +99,11 @@ export const startDynamoDb = async ({ logFile } = {}) => {
     [
       dynaliteEntry,
       '--host',
-      '127.0.0.1',
+      host,
       '--port',
-      '8000',
+      String(port),
       '--path',
-      resolve(workspaceRoot, '.nx/dynalite'),
+      dataPath,
       '--createTableMs',
       '0',
     ],
@@ -69,12 +125,42 @@ export const startDynamoDb = async ({ logFile } = {}) => {
   child.stdout.on('data', handleChunk);
   child.stderr.on('data', handleChunk);
 
-  await waitForDynamoDb();
-  return child;
+  await new Promise((resolvePromise, rejectPromise) => {
+    const onExit = (code, signal) => {
+      rejectPromise(
+        new Error(
+          `DynamoDB emulator exited before becoming ready (code=${code ?? 'null'}, signal=${signal ?? 'null'})`
+        )
+      );
+    };
+
+    child.once('exit', onExit);
+    waitForDynamoDb(endpoint)
+      .then(() => {
+        child.off('exit', onExit);
+        resolvePromise();
+      })
+      .catch((error) => {
+        child.off('exit', onExit);
+        rejectPromise(error);
+      });
+  });
+
+  return {
+    child,
+    dataPath,
+    endpoint,
+    host,
+    port,
+  };
 };
 
-export const stopDynamoDb = async (child) => {
+export const stopDynamoDb = async (runtime) => {
+  const child = runtime?.child;
   if (!child || child.killed) {
+    if (runtime?.dataPath) {
+      rmSync(runtime.dataPath, { recursive: true, force: true });
+    }
     return;
   }
 
@@ -93,6 +179,8 @@ export const stopDynamoDb = async (child) => {
 
     child.kill('SIGTERM');
   });
-};
 
-export const dynamoDbEndpoint = endpoint;
+  if (runtime?.dataPath) {
+    rmSync(runtime.dataPath, { recursive: true, force: true });
+  }
+};

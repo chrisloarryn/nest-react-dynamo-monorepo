@@ -5,6 +5,12 @@ import { spawn } from 'node:child_process';
 import { ensureDir, runCommand, wait, workspaceRoot } from './lib.mjs';
 
 const backendEntry = resolve(workspaceRoot, 'dist/apps/todos-backend/main.js');
+const awsValidationEnv = {
+  AWS_REGION: process.env.AWS_REGION ?? 'us-east-1',
+  AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID ?? 'DUMMYIDEXAMPLE',
+  AWS_SECRET_ACCESS_KEY:
+    process.env.AWS_SECRET_ACCESS_KEY ?? 'DUMMYEXAMPLEKEY',
+};
 
 export const buildBackend = async (logFile) =>
   runCommand('npx', ['nx', 'build', 'todos-backend'], { logFile });
@@ -37,6 +43,7 @@ export const startBackend = async ({
     cwd: workspaceRoot,
     env: {
       ...process.env,
+      ...awsValidationEnv,
       PORT: String(port),
       NODE_ENV: process.env.NODE_ENV ?? 'test',
       ENABLE_SWAGGER: process.env.ENABLE_SWAGGER ?? 'true',

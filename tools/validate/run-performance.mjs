@@ -4,11 +4,7 @@ import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import axios from 'axios';
 import { buildBackend, startBackend, stopBackend } from './backend-runtime.mjs';
-import {
-  dynamoDbEndpoint,
-  startDynamoDb,
-  stopDynamoDb,
-} from '../dynamodb/runtime.mjs';
+import { startDynamoDb, stopDynamoDb } from '../dynamodb/runtime.mjs';
 import {
   performanceReportsRoot,
   resetDir,
@@ -232,6 +228,7 @@ const main = async () => {
   const dynamoDb = await startDynamoDb({
     logFile: resolve(performanceReportsRoot, 'dynamodb.log'),
   });
+  const dynamoDbEndpoint = dynamoDb.endpoint;
   try {
     await runCommand('node', ['tools/dynamodb/bootstrap-tables.mjs'], {
       logFile: resolve(performanceReportsRoot, 'dynamodb-bootstrap.log'),
